@@ -1,29 +1,29 @@
 Grammar:
 	nonterminals: 253
-	terminals: 770
-	productions: 2118
+	terminals: 772
+	productions: 2124
 
 Term rewriting system:
 	kinds: 44
 	sorts: 151
-	user symbols: 462
-	total symbols: 527
+	user symbols: 467
+	total symbols: 534
 	polymorphic operators: 5
 	membership axioms: 0
-	equations: 249
+	equations: 251
 	rules: 0
 	strategies: 0
 	strategy definitions: 0
 Grammar:
 	nonterminals: 253
-	terminals: 770
-	productions: 2118
+	terminals: 772
+	productions: 2124
 
 Term rewriting system:
 	kinds: 44
 	sorts: 151
-	user symbols: 462
-	total symbols: 462
+	user symbols: 467
+	total symbols: 467
 	polymorphic operators: 5
 	membership axioms: 0
 	equations: 0
