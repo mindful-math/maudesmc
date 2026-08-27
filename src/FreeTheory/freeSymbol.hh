@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2024 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -42,11 +42,11 @@ public:
 				   int arity,
 				   const Vector<int>& strategy = standard,
 				   bool memoFlag = false);
+  bool lowArity() const;
 
   Term* makeTerm(const Vector<Term*>& args);
   DagNode* makeDagNode(const Vector<DagNode*>& args);
   void compileEquations();
-  bool eqRewrite(DagNode* subject, RewritingContext& context);
   void computeBaseSort(DagNode* subject);
   void normalizeAndComputeTrueSort(DagNode* subject, RewritingContext& context);
   void stackArguments(DagNode* subject,
@@ -90,10 +90,40 @@ public:
 #ifdef DUMP
   void dump(ostream& s, int indentLevel = 0);
 #endif
+protected:
+  //
+  //	This is provided for derived classes to call from their own EqRewriter functions.
+  //
+  bool tryEquations(DagNode* subject, RewritingContext& context);
 
 private:
+  EqRewriter::EqRewriteFunctionPtr chooseEqRewriteFunction() const;
+  EqRewriter::EqRewriteFunctionPtr chooseNullNetFunction() const;
+  EqRewriter::EqRewriteFunctionPtr chooseNonNullNetFunction() const;
+
   bool complexStrategy(DagNode* subject, RewritingContext& context);
   void memoStrategy(MemoTable::SourceSet& from, DagNode* subject, RewritingContext& context);
+
+  template<int n>
+  static bool eqRewriteCtor(Symbol* symbol, DagNode* subject, RewritingContext& context);
+  template<int n>
+  static bool eqRewriteUnroll(Symbol* symbol, DagNode* subject, RewritingContext& context);
+  template<int n>
+
+  static bool eqRewriteLowArity(Symbol* symbol, DagNode* subject, RewritingContext& context);
+  template<int n>
+  static bool eqRewriteFast(Symbol* symbol, DagNode* subject, RewritingContext& context);
+  template<int n>
+  static bool eqRewriteSuperFast(Symbol* symbol, DagNode* subject, RewritingContext& context);
+
+  template<int n>
+  static bool eqRewriteNullNetGeneral(Symbol* symbol, DagNode* subject, RewritingContext& context);
+  template<int n>
+  static bool eqRewriteNullNetFast(Symbol* symbol, DagNode* subject, RewritingContext& context);
+  template<int n>
+  static bool eqRewriteNullNetSuperFast(Symbol* symbol, DagNode* subject, RewritingContext& context);
+
+  static bool eqRewriteSlow(Symbol* symbol, DagNode* subject, RewritingContext& context);
 
 protected:
   FreeNet discriminationNet;
@@ -103,6 +133,23 @@ inline FreeNet&
 FreeSymbol::getNet()
 {
   return discriminationNet;
+}
+
+inline bool
+FreeSymbol::tryEquations(DagNode* subject, RewritingContext& context)
+{
+  //
+  //	We assume caller has already reduced the arguments, and failed to execute
+  //	some special semantics. This a backstop that tries the user's equations.
+  //
+  Assert(this == subject->symbol(), "bad symbol");
+  return discriminationNet.applyReplace(subject, context);
+}
+
+inline bool
+FreeSymbol::lowArity() const
+{
+  return arity() <= 3;  // HACK - should get this magic number in a clean way
 }
 
 #endif

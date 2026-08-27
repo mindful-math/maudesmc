@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2025 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -247,7 +247,8 @@ MetaLevel::downModule(DagNode* metaModule)
   DagNode* metaParameterDeclList;
   if (downHeader(f->getArgument(0), id, metaParameterDeclList))
     {
-      MetaModule* m = new MetaModule(id, mt, owner);
+      owner->protectCaches();
+      MetaModule* m = new MetaModule(id, mt, ImportModule::TEXT, owner);
       m->addUser(&cache);
       if (downParameterDeclList(metaParameterDeclList, m) &&
 	  downImports(f->getArgument(1), m))
@@ -288,14 +289,12 @@ MetaLevel::downModule(DagNode* metaModule)
 				  m->checkFreshVariableNames();
 				  cache.insert(metaModule, m);
 				  //
-				  //	We may have displaced a module from the metamodule cache.
-				  //	The displaced module may have had parameter and imports
-				  //	constructed for it which could now be orphans. Now that
-				  //	any parameters and imports of this new module have been
-				  //	processed, the module system is quiescent and we can
-				  //	purge any orphans.
+				  //	Any modules and view we depend on, we
+				  //	are now recorded as a user of, so we
+				  //	don't need to protect the caches and we
+				  //	might trigger a garbage collect of them.
 				  //
-				  owner->cleanCaches();
+				  owner->unprotectCaches();
 				  return m;
 				}
 			    }
@@ -315,13 +314,13 @@ MetaLevel::downModule(DagNode* metaModule)
       //
       m->deepSelfDestruct();
       //
-      //	Processing module expressions for parameters and imports may have resulted in the
-      //	construction of modules and views that are now orphaned because we failed to build
-      //	the metamodule. We purge these now.
+      //	We failed to build so we no longer need to protect the caches
+      //	and we might trigger a garbage collect of them to remove any
+      //	unused modules and views we created during failure.
       //	
-      owner->cleanCaches();
+      owner->unprotectCaches();
     }
-  return 0;
+  return nullptr;
 }
 
 bool
@@ -555,7 +554,7 @@ MetaLevel::downTypeSet(DagNode* metaTypeSet, MixfixModule* m, Vector<Sort*>& typ
 
 
 bool
-MetaLevel::downType2(int id, MixfixModule* m, Sort*& type) const
+MetaLevel::downType2(int id, MixfixModule* m, Sort*& type, bool dontAdvise) const
 {
   switch (Token::auxProperty(id))
     {
@@ -568,7 +567,7 @@ MetaLevel::downType2(int id, MixfixModule* m, Sort*& type) const
 	    type = s;
 	    return true;
 	  }
-	IssueAdvisory("could not find sort " << QUOTE(Token::name(id)) <<
+	AdvisoryCheck(dontAdvise, "could not find sort " << QUOTE(Token::name(id)) <<
 		      " in meta-module " << QUOTE(m) << '.');
 	break;
       }
@@ -584,7 +583,7 @@ MetaLevel::downType2(int id, MixfixModule* m, Sort*& type) const
 	    Sort* s = m->findSort(id2);
 	    if (s == 0)
 	      {
-		IssueAdvisory("could not find sort " << QUOTE(Token::name(id2)) <<
+		AdvisoryCheck(dontAdvise, "could not find sort " << QUOTE(Token::name(id2)) <<
 			      " in meta-module " << QUOTE(m) << '.');
 		return false;
 	      }
@@ -592,7 +591,7 @@ MetaLevel::downType2(int id, MixfixModule* m, Sort*& type) const
 	      component = s->component();
 	    else if (component != s->component())
 	      {
-		IssueAdvisory("component clash in kind " <<
+		AdvisoryCheck(dontAdvise, "component clash in kind " <<
 			      QUOTE(Token::name(id)) <<
 			      " in meta-module " << QUOTE(m) << '.');
 		return false;
@@ -603,7 +602,7 @@ MetaLevel::downType2(int id, MixfixModule* m, Sort*& type) const
       }
     default:
       {
-	IssueAdvisory("expected sort or kind, not " << QUOTE(Token::name(id)) <<
+	AdvisoryCheck(dontAdvise, "expected sort or kind, not " << QUOTE(Token::name(id)) <<
 		      " in meta-module " << QUOTE(m) << '.');
 	break;
       }
@@ -1300,7 +1299,7 @@ MetaLevel::downTerm(DagNode* metaTerm, MixfixModule* m)
 		}
 	      IssueAdvisory("could not find an operator " << QUOTE(Token::name(id)) <<
 			    " with appropriate domain in meta-module " << QUOTE(m) <<
-			    " when trying to interprete metaterm " << QUOTE(metaTerm) << '.');
+			    " when trying to interpret metaterm " << QUOTE(metaTerm) << '.');
 	  // cerr << metaTerm << '\n';
 	  // m->showAll(cerr);
 	      for (int i = 0; i < nrArgs; i++)

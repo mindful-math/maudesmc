@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -53,14 +53,20 @@ public:
 
   enum Origin
   {
+    //
+    //	TEXT can be actual text, or meta-syntax (in which case we're really a MetaModule);
+    //  and the meta-syntax may have been produced by a user module transformation.
+    //	We're not going to pick apart this case, except for latex pretty printing.
+    //
     TEXT,
     SUMMATION,
     RENAMING,
     PARAMETER,
-    INSTANTIATION
+    INSTANTIATION,
+    TRANSFORMATION
   };
 
-  ImportModule(int name, ModuleType moduleType);
+  ImportModule(int name, ModuleType moduleType, Origin origin);
   ImportModule(int name, ModuleType moduleType, Origin origin, Entity::User* parent);
   ~ImportModule();
 
@@ -71,6 +77,10 @@ public:
 		 LineNumber lineNumber);
   void addParameter(const Token parameterName,
 		    ImportModule* parameterTheory);
+  void setTransformInfo(ImportModule* transModule,
+			const Vector<ImportModule*>& inModules,
+			const Vector<int>& transOptions,
+			const Vector<View*>& inViews);
   void closeSortSet();
   void closeSignature();
   void deepSelfDestruct();
@@ -83,6 +93,7 @@ public:
   void resetImports();
 
   void localStatementsComplete();
+  void finishFlattening();
   void protect();
   bool unprotect();
 
@@ -124,6 +135,13 @@ public:
   bool parameterDeclared(RewriteStrategy* strat) const;
   bool parameterDeclaredPolymorph(int index) const;
   const Renaming* getCanonicalRenaming() const;  // only supported for parameter copies
+
+  ImportModule* getBaseModule() const;
+  const Vector<Argument*>& getArguments() const;
+  ImportModule* getTransformModule() const;
+  const Vector<ImportModule*>& getInputModules() const;
+  const Vector<int>& getTransformOptions() const;
+  const Vector<View*>& getInputViews() const;
   //
   //	Needed for EnclosingObject base.
   //
@@ -236,6 +254,7 @@ private:
   void finishCopy(ImportModule* copy, Renaming* canonical);
 
   void checkForPolymorphOperatorClash();
+  void deleteParameters();
   
   void copyMetadata(ImportModule* importer,
 		    ImportTranslation& importTranslation,
@@ -312,6 +331,14 @@ private:
   //
   Vector<ImportModule*> importedModules;
   Vector<ImportMode> importModes;
+  //
+  //	If we were produced by a user transformation, we will have other
+  //	dependancies that we need to track.
+  //
+  ImportModule* transformModule = nullptr;
+  Vector<ImportModule*> inputModules;
+  Vector<int> transformOptions;
+  Vector<View*> inputViews;
   //
   //	Because for sorts, symbols, and polymorphs, stuff from parameter
   //	theories is inserted first we can keep track of what came from
@@ -636,7 +663,7 @@ ImportModule::parameterDeclaredPolymorph(int index) const
 inline const Renaming*
 ImportModule::getCanonicalRenaming() const
 {
-  Assert(origin == PARAMETER, "called on origin = " << origin);
+  //Assert(origin == PARAMETER, "called on origin = " << origin);
   return canonicalRenaming;
 }
 
@@ -666,6 +693,62 @@ ImportModule::getParameterTheoryCopy(int index) const
 {
   Assert(index < getNrParameters(), "bad parameter index " << index << " in module " << (const MixfixModule*) this);
   return parameterTheories[index];
+}
+
+inline void
+ImportModule::setTransformInfo(ImportModule* transModule,
+			       const Vector<ImportModule*>& inModules,
+			       const Vector<int>& transOptions,
+			       const Vector<View*>& inViews)
+{
+  Assert(origin == TRANSFORMATION, "called on origin = " << origin << " for " << this);
+  transformModule = transModule;
+  inputModules = inModules;
+  transformOptions = transOptions;
+  inputViews = inViews;
+}
+
+inline ImportModule*
+ImportModule::getBaseModule() const
+{
+  Assert(origin == RENAMING || origin == PARAMETER || origin == INSTANTIATION,
+	 "called on origin = " << origin << " for " << this);
+  return baseModule;
+}
+
+inline const Vector<Argument*>&
+ImportModule::getArguments() const
+{
+  Assert(origin == INSTANTIATION, "called on origin = " << origin << " for " << this);
+  return savedArguments;
+}
+
+inline ImportModule*
+ImportModule::getTransformModule() const
+{
+  Assert(origin == TRANSFORMATION, "called on origin = " << origin << " for " << this);
+  return transformModule;
+}
+
+inline const Vector<ImportModule*>&
+ImportModule::getInputModules() const
+{
+  Assert(origin == TRANSFORMATION, "called on origin = " << origin << " for " << this);
+  return inputModules;
+}
+
+inline const Vector<int>&
+ImportModule::getTransformOptions() const
+{
+  Assert(origin == TRANSFORMATION, "called on origin = " << origin << " for " << this);
+  return transformOptions;
+}
+
+inline const Vector<View*>&
+ImportModule::getInputViews() const
+{
+  Assert(origin == TRANSFORMATION, "called on origin = " << origin << " for " << this);
+  return inputViews;
 }
 
 #endif

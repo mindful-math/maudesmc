@@ -156,6 +156,7 @@
      MACRO(sumSymbol, Symbol, SymbolType::ASSOC | SymbolType::COMM, 2)
      MACRO(renamingSymbol, FreeSymbol, 0, 2)
      MACRO(instantiationSymbol, FreeSymbol, 0, 2)
+     MACRO(transformationSymbol, FreeSymbol, 0, 4)
      //
      //	Hook constructors.
      //
@@ -187,6 +188,7 @@
      MACRO(msgSymbol, Symbol, 0, 0)
      MACRO(portalSymbol, Symbol, 0, 0)
      MACRO(pconstSymbol, Symbol, 0, 0)
+     MACRO(rpoSymbol, FreeSymbol, 0, 1)
      MACRO(specialSymbol, FreeSymbol, 0, 1)
 
      MACRO(labelSymbol, FreeSymbol, 0, 1)

@@ -1,0 +1,100 @@
+set show timing off .
+
+***
+***	Test predefined TUPLE and POWER module generators and a Tuple view generator.
+***
+
+fmod TEST is
+  inc TUPLE(4){Nat, Int, String, Qid} .
+endfm
+
+red p3(42, -4, "abc", 'cde) .
+
+view Pair{T1 :: TRIV, T2 :: TRIV} from TRIV to TUPLE(2){T1, T2} is
+  sort Elt to Tuple{T1,T2} .
+endv
+
+fmod BAR is
+  inc TUPLE(3){Nat, Pair{String, String}, Qid} .
+endfm
+
+red p2(4, ("a", "abc"), 'a) .
+
+make POWER-TEST is POWER(3){Nat} endm
+
+show sorts .
+
+red p3(4, 5, 6) .
+
+***
+***	Tuple view generator.
+***
+
+fmod Tuple is
+  pr VIEW-TRANSFORMER .
+  pr CONVERSION .
+  var N : Nat .
+  var NZ : NzNat .
+  var Q : Qid .
+  
+  op makeTuple : ModuleList QidList ModuleExpressionList -> ViewResult .
+  ceq makeTuple(nil, Q, empty) = {
+    view 'Tuple{ paramDecls(NZ) } from 'TRIV to ('TUPLE[empty](Q)[empty]){paramList(NZ)} is
+      sort 'Elt to S:Sort .
+      none
+      none
+    endv, nil} if NZ := rat(string(Q), 10) /\
+      S:Sort := qid("Tuple{" + params(NZ) + "}") .
+      
+  eq makeTuple(ML:NeModuleList, QL:QidList, MEL:ModuleExpressionList) =
+    {nil, warning("input modules not expected by Tuple.")} .
+
+  eq makeTuple(nil, QL:QidList, empty) =
+    {nil, warning("bad argument to Tuple.")} [owise] .
+
+  op paramDecls : Nat -> ParameterDeclList .
+  eq paramDecls(0) = nil .
+  eq paramDecls(s N) = paramDecls(N), (qid("X" + string(s N, 10)) :: 'TRIV) .
+
+  op paramList : NzNat -> QidList .
+  eq paramList(1) = 'X1 .
+  eq paramList(s NZ) = paramList(NZ), qid("X" + string(s NZ, 10)) .
+
+  op params : NzNat -> String .
+  eq params(1) = "X1" .
+  eq params(s NZ) = params(NZ) + ",X" + string(s NZ, 10) .
+endfm
+
+fmod TEST2 is
+  inc SET{Tuple(2){Nat, Nat}} .
+endfm
+
+red p1(((2, 2), (3, 4)) \ (2, 2)) .
+
+fmod TEST3 is
+  inc TUPLE(2){Tuple(3){Nat, Int, String}, Qid} .
+endfm
+
+red p1((5,-1,"Foo"),'Bar) .
+red p2((5,-1,"Foo"),'Bar) .
+
+fmod TEST4 is
+  inc TUPLE(2){Tuple(3){Nat, Tuple(2){Qid, Qid}, String}, Qid} .
+endfm
+
+red ((5, ('a, 'bb), "dd"), 'z) .
+red p1 p2 p1((5, ('a, 'bb), "dd"), 'z) .
+
+make TEST5 is POWER(2){Tuple(3){Nat, String, Qid}} endm
+
+show sorts .
+red ((3, "three", 'three), (4, "four", 'four)) .
+red p1 p2((3, "three", 'three), (4, "four", 'four)) .
+
+fmod BAD-ARGUMENT is
+  inc SET{Tuple(a b c){Nat, Nat}} .
+endfm
+
+fmod UNEXPECTED-MODULE is
+  inc SET{Tuple[MAP](2){Nat, Nat}} .
+endfm

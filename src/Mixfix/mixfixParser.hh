@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2024 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 //
 #ifndef _mixfixParser_hh_
 #define _mixfixParser_hh_
-#include <map>
+#include <unordered_map>
 #include "intSet.hh"
 #include "parser.hh"
 #include "token.hh"
@@ -48,7 +48,8 @@ public:
     //
     //	Special kinds of terms.
     //
-    MAKE_VARIABLE,
+    MAKE_OTF_VARIABLE_KNOWN_SORT,
+    MAKE_OTF_VARIABLE,
     MAKE_VARIABLE_FROM_ALIAS,
     MAKE_OBJECT_WITH_EMPTY_ATTRIBUTE_SET,
     MAKE_NATURAL,
@@ -94,6 +95,7 @@ public:
     MAKE_EXTENSION_ATTRIBUTE,
     MAKE_DNT_ATTRIBUTE,
     MAKE_PRINT_ATTRIBUTE,
+    MAKE_PRINT_VARIABLE,
     MAKE_ATTRIBUTE_LIST,
     //
     //	Command construction actions.
@@ -157,7 +159,8 @@ public:
 			      const Vector<int>& excluded,
 			      int bubbleSpecIndex);
   void insertSpecialTerminal(int tokenProperty, int codeToUse);
-  void insertVariableTerminal(int sortNameCode, int codeToUse);
+  void insertComponentTerminal(int componentIndex, int codeToUse);
+  void insertLeadTerminal(int sortNameCode, int codeToUse);
   void insertIterSymbolTerminal(int iterSymbolNameCode, int codeToUse);
   //
   //	Function that parses a vector of tokens to a parse tree.
@@ -203,8 +206,8 @@ public:
   int getNrTerminals() const;
 
 private:
-  typedef map<int,int> IntMap;
-  
+  typedef unordered_map<int,int> IntMap;
+
   enum Flags
   {
     NONEXEC = 1,
@@ -239,6 +242,7 @@ private:
 			 Vector<int>& printNames,
 			 Vector<Sort*>& printSorts);
   void makePrintList(int node, Vector<int>& names, Vector<Sort*>& sorts);
+  void makePrintListVariable(int node, Vector<int>& names, Vector<Sort*>& sorts);
   void makeStatementPart(int node,
 			 int label,
 			 int metadata,
@@ -251,6 +255,9 @@ private:
   void makeUsingList(int node, Vector<Term*>& terms, Vector<StrategyExpression*>& strategies);
   void makeTermDisjunction(int node, Vector<Term*>& terms);
   int translateSpecialToken(int code);
+  void makeOtfTranslations();
+  ConnectedComponent* checkSortNames(const Vector<int>& sortNames);
+  void makeOtfTranslation(int code, int varName, int sortIndex);
 
   MixfixModule& client;
   const bool complexParser;
@@ -262,17 +269,20 @@ private:
   TokenSet tokenSet;			// mapping between token codes and terminal numbers
   Vector<Action> actions;		// action associated with each production
   Vector<int> specialTerminals;		// special terminals for tokens with special properties
-  IntMap variableTerminals;		// special terminals for on-the-fly variables
+  Vector<int> componentTerminals;	// special terminals for regular otf variables
+  IntMap leadTerminals;			// special terminals for X:Foo where Foo{...} is a sort
   IntMap iterSymbolTerminals;		// special terminals for tokens like f^42
   bool bubblesAllowed;			// do we allow bubbles of unknown tokens
+  bool otfTranslationsMade;
   //
   //	We store the tokens we are parsing here to avoid passing extra parameters
   //	when recursing down a parse tree.
   //
   const Vector<Token>* currentSentence;	// actual tokens so we can deal with special tokens
-  int currentOffset;			// start of parsed tokens
   Vector<int> sentence;			// sentence translated into terminal numbers
+  int currentOffset;			// start of parsed tokens
   int nrParses;
+  IntMap otfTranslations;
 };
 
 inline int
@@ -317,18 +327,40 @@ MixfixParser::newNonTerminal()
   return --nextNonTerminal;
 }
 
-
 inline int
 MixfixParser::tokenToIndex(int token)
 {
   return tokenSet.insert(token);
 }
 
-
 inline const MixfixParser::TokenSet&
 MixfixParser::getTokenSet()  // HACK
 {
   return tokenSet;
+}
+
+inline void
+MixfixParser::insertSpecialTerminal(int tokenProperty, int codeToUse)
+{
+  specialTerminals[tokenProperty] = tokenToIndex(codeToUse);
+}
+
+inline void
+MixfixParser::insertComponentTerminal(int componentIndex, int codeToUse)
+{
+  componentTerminals[componentIndex] = tokenToIndex(codeToUse);
+}
+
+inline void
+MixfixParser::insertLeadTerminal(int sortNameCode, int codeToUse)
+{
+  leadTerminals[sortNameCode] = tokenToIndex(codeToUse);
+}
+
+inline void
+MixfixParser::insertIterSymbolTerminal(int iterSymbolNameCode, int codeToUse)
+{
+  iterSymbolTerminals[iterSymbolNameCode] = tokenToIndex(codeToUse);
 }
 
 #endif

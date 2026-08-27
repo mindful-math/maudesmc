@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2003 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ class CUI_NumberOpSymbol : public CUI_Symbol
 public:
   CUI_NumberOpSymbol(int id, Axioms axioms);
 
+protected:
   bool attachData(const Vector<Sort*>& opDeclaration,
 		  const char* purpose,
 		  const Vector<const char*>& data);
@@ -42,10 +43,11 @@ public:
 			  Vector<Vector<const char*> >& data);
   void getSymbolAttachments(Vector<const char*>& purposes,
 			    Vector<Symbol*>& symbols);
-
-  bool eqRewrite(DagNode* subject, RewritingContext& context);
+  void compileEquations();
 
 private:
+  static bool eqRewrite(Symbol* symbol, DagNode* subject, RewritingContext& context);
+
   int op;
   SuccSymbol* succSymbol;
 };

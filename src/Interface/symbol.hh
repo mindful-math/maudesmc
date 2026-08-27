@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2024 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -37,9 +37,11 @@
 #include "ruleTable.hh"
 #include "strategy.hh"
 #include "memoTable.hh"
+#include "eqRewriter.hh"
 
 class Symbol
   : public RuleTable,
+    public EqRewriter,
     public NamedEntity,
     public LineNumber,
     public SortTable,
@@ -83,7 +85,6 @@ public:
   //
   //	These functions must be defined for each derived class.
   //
-  virtual bool eqRewrite(DagNode* subject, RewritingContext& context) = 0;
   virtual void computeBaseSort(DagNode* subject) = 0;
   virtual void normalizeAndComputeTrueSort(DagNode* subject, RewritingContext& context) = 0;
   virtual Term* makeTerm(const Vector<Term*>& args) = 0;

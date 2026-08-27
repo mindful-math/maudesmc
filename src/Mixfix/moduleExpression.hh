@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,20 +36,28 @@ public:
     MODULE,
     SUMMATION,
     RENAMING,
-    INSTANTIATION
+    INSTANTIATION,
+    TRANSFORMATION
   };
 
   ModuleExpression(Token moduleName);
   ModuleExpression(ModuleExpression* left, ModuleExpression* right);
   ModuleExpression(ModuleExpression* module, Renaming* renaming);
   ModuleExpression(ModuleExpression* module, const Vector<ViewExpression*>& arguments);
-  
+  ModuleExpression(Token moduleName,
+		   const Vector<ModuleExpression*>& inputModules,
+		   const Vector<int>& options,
+		   const Vector<ViewExpression*>& inputViews);
+
   Type getType() const;
   Token getModuleName() const;
   const list<ModuleExpression*>& getModules() const;
   ModuleExpression* getModule() const;
   Renaming* getRenaming() const;
   const Vector<ViewExpression*>& getArguments() const;
+  const Vector<ModuleExpression*>& getInputModules() const;
+  const Vector<int>& getOptions() const;
+
   void deepSelfDestruct();
 
   void latexPrint(ostream& s, const Module* enclosingModule = nullptr) const;
@@ -57,7 +65,7 @@ public:
 private:
   const Type type;
   //
-  //	For named module.
+  //	For named module and transformation.
   //
   Token moduleName;
   //
@@ -65,7 +73,7 @@ private:
   //
   list<ModuleExpression*> modules;
   //
-  //	For renaming and instantiation.
+  //	For renaming, instantiation.
   //
   ModuleExpression* module;
   //
@@ -73,7 +81,12 @@ private:
   //
   Renaming* renaming;
   //
-  //	For instantiation.
+  //	For transformation.
+  //
+  Vector<ModuleExpression*> inputModules;
+  Vector<int> options;
+  //
+  //	For instantiation and transformation.
   //
   Vector<ViewExpression*> arguments;
 };
@@ -89,9 +102,10 @@ ModuleExpression::getType() const
 inline Token
 ModuleExpression::getModuleName() const
 {
-  Assert(type == MODULE, "not a named module");
+  Assert(type == MODULE || type == TRANSFORMATION, "not a named module");
   return moduleName;
 }
+
 
 inline const list<ModuleExpression*>&
 ModuleExpression::getModules() const
@@ -103,7 +117,8 @@ ModuleExpression::getModules() const
 inline ModuleExpression*
 ModuleExpression::getModule() const
 {
-  Assert(type == RENAMING || type == INSTANTIATION, "not a renaming or instantiation");
+  Assert(type == RENAMING || type == INSTANTIATION,
+	 "not a renaming, instantiation or transformation");
   return module;
 }
 
@@ -117,8 +132,22 @@ ModuleExpression::getRenaming() const
 inline const Vector<ViewExpression*>&
 ModuleExpression::getArguments() const
 {
-  Assert(type == INSTANTIATION, "not instantiation");
+  Assert(type == INSTANTIATION || type == TRANSFORMATION, "not instantiation or transformation");
   return arguments;
+}
+
+inline const Vector<ModuleExpression*>&
+ModuleExpression::getInputModules() const
+{
+  Assert(type == TRANSFORMATION, "not a transformation");
+  return inputModules;
+}
+
+inline const Vector<int>&
+ModuleExpression::getOptions() const
+{
+  Assert(type == TRANSFORMATION, "not a transformation");
+  return options;
 }
 
 #endif

@@ -213,6 +213,51 @@ MixfixModule::checkIterated(Symbol* symbol, const Vector<Sort*>& domainAndRange)
     }
 }
 
+bool
+MixfixModule::compatible(Index existingSymbolIndex,
+			 SymbolType symbolType,
+			 const Vector<int>& strategy,
+			 const NatSet& frozen,
+			 int prec,
+			 const Vector<int>& gather,
+			 const Vector<int>& format,
+			 int latexMacro,
+			 int rpo)
+{
+  if (!symbolType.compatible(symbolInfo[existingSymbolIndex].symbolType))
+    return false;
+  //
+  //	The rawStrategy field exists for the sole purpose of doing this
+  //	check because the strategy inside the symbol is normalized in
+  //	theory-dependent ways.
+  //
+  if (symbolType.hasFlag(SymbolType::STRAT) &&
+      !(symbolInfo[existingSymbolIndex].rawStrategy == strategy))
+    return false;
+  if (symbolType.hasFlag(SymbolType::FROZEN) &&
+      getSymbols()[existingSymbolIndex]->getFrozen() != frozen)
+    return false;
+  if (symbolType.hasFlag(SymbolType::PREC) &&
+      symbolInfo[existingSymbolIndex].prec != prec)
+    return false;
+  if (symbolType.hasFlag(SymbolType::LATEX) &&
+      symbolInfo[existingSymbolIndex].latexMacro != latexMacro)
+    return false;
+  //
+  //	Gathers aren't converted to precedence numbers until we call
+  //	computePrecAndGather() when we close the signature.
+  //
+  if (symbolType.hasFlag(SymbolType::GATHER) &&
+      !(symbolInfo[existingSymbolIndex].gather == gather))
+    return false;
+  if (symbolType.hasFlag(SymbolType::FORMAT) &&
+      !(symbolInfo[existingSymbolIndex].format == format))
+    return false;
+  if (symbolType.hasFlag(SymbolType::RPO) && symbolInfo[existingSymbolIndex].rpo != rpo)
+    return false;
+  return true;
+}
+
 Symbol*
 MixfixModule::addOpDeclaration(Token prefixName,
 			       const Vector<Sort*>& domainAndRange,
@@ -223,6 +268,7 @@ MixfixModule::addOpDeclaration(Token prefixName,
 			       const Vector<int>& gather,
 			       const Vector<int>& format,
 			       int latexMacro,
+			       int rpo,
 			       int metadata,
 			       bool& firstDecl)
 {
@@ -233,7 +279,7 @@ MixfixModule::addOpDeclaration(Token prefixName,
     {
       IssueWarning(LineNumber(prefixName.lineNumber()) <<
 		   ": declaration for " << QUOTE(prefixName) <<
-		   " combines ditto with attributes other than ctor.");
+		   " combines ditto with attributes other than ctor or metadata.");
     }
 
   int nrArgs = domainAndRange.length() - 1;
@@ -275,8 +321,16 @@ MixfixModule::addOpDeclaration(Token prefixName,
 		      if (nrArgs == iNrArgs)
 			{
 			  firstDecl = false;
-			  if (!(symbolType.hasFlag(SymbolType::DITTO)) &&
-			      !(getSymbolType(s).compatible(symbolType)))
+			  if (!symbolType.hasFlag(SymbolType::DITTO) &&
+			      !compatible(i,
+					  symbolType,
+					  strategy,
+					  frozen,
+					  prec,
+					  gather,
+					  format,
+					  latexMacro,
+					  rpo))
 			    {
 			      IssueWarning(LineNumber(prefixName.lineNumber()) <<
 					   ": declaration for " << QUOTE(s) <<
@@ -357,6 +411,34 @@ MixfixModule::addOpDeclaration(Token prefixName,
       symbol = FreeSymbol::newFreeSymbol(name, nrArgs, strategy,
 					 symbolType.hasFlag(SymbolType::MEMO));
       symbolType.clearFlags(SymbolType::AXIOMS | SymbolType::ITER);
+    }
+  else
+    {
+      if (symbolType.getBasicType() == SymbolType::MODULE_RESULT_SYMBOL)
+	{
+	  if (moduleResultSymbol == nullptr)
+	    moduleResultSymbol = safeCastNonNull<ModuleResultSymbol*>(symbol);
+	  else
+	    {
+	      IssueWarning(LineNumber(prefixName.lineNumber()) <<
+			   ": cannot have both " << QUOTE(moduleResultSymbol) <<
+			   " and " << QUOTE(symbol) <<
+			   " with the ModuleResultSymbol special attribute.");
+	    }
+	}
+        else if (symbolType.getBasicType() == SymbolType::VIEW_RESULT_SYMBOL)
+	{
+	  if (viewResultSymbol == nullptr)
+	    viewResultSymbol = safeCastNonNull<ViewResultSymbol*>(symbol);
+	  else
+	    {
+	      IssueWarning(LineNumber(prefixName.lineNumber()) <<
+			   ": cannot have both " << QUOTE(viewResultSymbol) <<
+			   " and " << QUOTE(symbol) <<
+			   " with the ViewResultSymbol special attribute.");
+	    }
+	}
+
     }
   if (symbolType.hasFlag(SymbolType::FROZEN))
     symbol->setFrozen(frozen);
@@ -538,6 +620,8 @@ MixfixModule::addOpDeclaration(Token prefixName,
       si.latexMacro = NONE;
       symbolType.clearFlags(SymbolType::LATEX);
     }
+  si.rawStrategy = strategy;  // unmodified user strategy for consistency checking
+  si.rpo = rpo;
   si.polymorphIndex = NONE;
   si.symbolType = symbolType;
   si.symbolType.clearFlags(SymbolType::CTOR);  // don't store ctor flag in per-symbol struct
@@ -685,6 +769,7 @@ MixfixModule::addPolymorph(Token prefixName,
 			   const Vector<int>& gather,
 			   const Vector<int>& format,
 			   int latexMacro,
+			   int rpo,
 			   int metadata)
 {
   int index = findPolymorphIndex(prefixName.code(), domainAndRange);
@@ -774,6 +859,7 @@ MixfixModule::addPolymorph(Token prefixName,
 	}
     }
   p.symbolInfo.latexMacro = latexMacro;  // HACK
+  p.symbolInfo.rpo = rpo;
   p.symbolInfo.polymorphIndex = nrPolymorphs;  // our own index
   p.symbolInfo.symbolType = symbolType;
   p.symbolInfo.next = NONE;

@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2003 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,37 +21,20 @@
 */
 
 //
-//	Implementation for class FreeUnarySymbol.
+//	List of all recognized result constructors.
 //
-
-//	utility stuff
-#include "macros.hh"
-#include "vector.hh"
-
-//	forward declarations
-#include "interface.hh"
-#include "core.hh"
-#include "variable.hh"
-#include "freeTheory.hh"
-
-//	interface class definitions
-#include "symbol.hh"
-
-//      core class definitions
-#include "rewritingContext.hh"
-
-//	free theory class definitions
-#include "freeUnarySymbol.hh"
-#include "freeDagNode.hh"
-
-FreeUnarySymbol::FreeUnarySymbol(int id)
-  : FreeSymbol(id, 1)
-{
-}
-
-bool
-FreeUnarySymbol::eqRewrite(DagNode* subject, RewritingContext& context)
-{
-  static_cast<FreeDagNode*>(subject)->internal[0]->reduce(context);
-  return DISC_NET.applyReplaceFast(subject, context);
-}
+//	We generate various chunks of linear (branching) code to handle
+//	this hetrogeneous collection by macro expansion.
+//	The format is:
+//		MACRO(symbols name, symbols C++ class)
+//
+  MACRO(nilModuleListSymbol, Symbol)
+  MACRO(moduleListSymbol, AU_Symbol)
+  MACRO(nilViewListSymbol, Symbol)
+  MACRO(viewListSymbol, AU_Symbol)
+  MACRO(nilSystemMsgListSymbol, Symbol)
+  MACRO(systemMsgListSymbol, AU_Symbol)
+  MACRO(advisorySymbol, FreeSymbol)
+  MACRO(warningSymbol, FreeSymbol)
+  MACRO(verboseSymbol, FreeSymbol)
+  MACRO(shareWith, MetaLevelOpSymbol)

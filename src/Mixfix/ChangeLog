@@ -1,3 +1,1669 @@
+2026-08-17  Saruman the White  <eker@eker10>
+
+	* mixfixParser.hh (class MixfixParser): use unordered_map rather
+	than map for IntMap
+
+2026-08-16  Saruman the White  <eker@eker10>
+
+	* view.cc (View::latexViewExpression): handle inputViews
+
+	* latexImportModule.cc (ImportModule::latexModuleExpression):
+	handle inputViews
+
+	* viewExpression.cc (ViewExpression::latexPrint): handle input
+	views in transformer expressions
+
+	* moduleExpression.cc (ModuleExpression::latexPrint): handle input
+	views in transformer expressions
+
+	* top.yy: added %destructor for <yyIntVector>; added types for
+	optTransOptions, transOptions
+
+	* modules.yy (transOptions): return a Vector<int>*
+	(optTransOptions): return a Vector<int>*
+	(transformExpr): use new optTransOptions convention
+	(transformExpr): use new transOptions convention
+	(viewExpr): use new optTransOptions convention
+	(viewExpr): use new transOptions convention
+
+	* top.yy: added yyIntVector to %union
+
+	* viewResultSymbol.cc (ViewResultSymbol::makeTransformedView): use
+	setTransformInfo() rather than setGenerationInfo()
+
+	* view.hh (class View): data member generationOptions ->
+	transformOptions
+
+	* view.cc (View::~View): generatorModule -> transformModule;
+	remove ourself as a user of our input views
+	(View::regretToInform): generatorModule -> transformModule
+	(View::latexViewExpression): generatorModule -> transformModule
+	(View::latexViewExpression): generationOptions -> transformOptions
+
+	* view.hh (class View): data member generatorModule ->
+	transformModule; added data member inputViews
+	(View::getGeneratorModule, View::getInputModules)
+	(View::getGenerationOptions): deleted
+	(View::setGenerationInfo): deleted
+	(View::setTransformInfo, View::getTransformModule)
+	(View::getInputModules, View::getTransformOptions)
+	(View::getInputViews): added
+
+	* importModule.cc (ImportModule::deepSelfDestruct): remove ourself
+	as a user of our input views
+
+	* moduleResultSymbol.cc
+	(ModuleResultSymbol::makeTransformedModule): pass inputViews to
+	setTransformInfo()
+
+	* importModule.hh (ImportModule::setTransformInfo): take and store
+	inputViews
+	(ImportModule::getInputViews): added
+
+2026-08-15  Saruman the White  <eker@eker10>
+
+	* viewExpression.cc (<<): handle inputViews
+
+	* moduleExpression.cc (<<): handle inputViews
+
+	* interpreter.cc (Interpreter::handleArgument): don't check
+	requiredParameterTheory if it is nullptr
+
+	* interpreter.hh (class Interpreter): added decl for
+	makeInputViews()
+
+	* interpreter.cc (Interpreter::makeInputViews): added stub
+	(Interpreter::handleArgument): use makeInputViews()
+	(Interpreter::makeModule): use makeInputViews()
+
+	* viewExpression.hh (ViewExpression::getArguments): allow
+	arguments to be read in TRANSFORMATION case
+
+	* moduleExpression.hh (ModuleExpression::getArguments): allow
+	arguments to be read in TRANSFORMATION case
+
+	* moduleExpression.cc (ModuleExpression::ModuleExpression): store
+	inputViews in arguments
+
+	* viewExpression.cc (ViewExpression::ViewExpression): store
+	inputViews in arguments
+
+	* viewExpression.hh (class ViewExpression): updated decl for
+	transformation ctor
+
+	* viewExpression.cc (ViewExpression::ViewExpression): take
+	inputViews
+
+	* moduleExpression.hh (class ModuleExpression): updated decl for
+	transformation ctor
+
+	* moduleExpression.cc (ModuleExpression::ModuleExpression): take
+	inputViews
+
+	* modules.yy (transformExpr): pass inputViews to
+	ModuleExpression()
+	(viewExpr): pass inputViews toViewExpression ()
+
+
+	* top.yy: added nonterminal optInputViews
+
+	* modules.yy (optInputViews): added
+	(transformExpr): added optInputViews
+	(viewExpr): added optInputViews
+
+	* moduleExpression.cc: TRANSFORM -> TRANSFORMATION throughout
+
+	* interpreter.cc (Interpreter::makeModule): TRANSFORM ->
+	TRANSFORMATION
+
+	* moduleExpression.hh: TRANSFORM -> TRANSFORMATION throughout
+
+	* viewResultSymbol.cc (ViewResultSymbol::makeTransformedView): use
+	multipleViews() and noViews()
+
+	* moduleResultSymbol.cc
+	(ModuleResultSymbol::makeTransformedModule): added {}s
+
+	* resultSymbol.hh (ResultSymbol::viewFailure): becomes noViews()
+	(ResultSymbol::multipleViews): added
+
+	* interpreter.cc (Interpreter::makeModule): use
+	makeTransformedModule()
+
+	* moduleCache.hh (class ModuleCache): makeModuleTransformation(I)
+	-> makeTransformedModule()
+
+	* viewCache.cc (ViewCache::makeTransformedView): incorporate
+	inputViews into name
+
+	* moduleCache.cc (ModuleCache::makeModuleTransformation): becomes
+	makeTransformedModule()
+	(ModuleCache::makeTransformedModule): incorporate inputViews into
+	name
+
+	* moduleResultSymbol.hh (class ModuleResultSymbol):
+	makeTransformation() -> makeTransformedModule()
+
+	* moduleResultSymbol.cc (ModuleResultSymbol::makeTransformation):
+	becomes makeTransformedModule()
+	(ModuleResultSymbol::makeTransformedModule): resultModule becomes
+	a user of input views
+
+	* viewExpression.cc: GENERATION -> TRANSFORMATION throughout
+
+	* viewExpression.hh: GENERATION -> TRANSFORMATION throughout
+
+	* interpreter.cc (Interpreter::handleArgument): call
+	makeTransformedView() rather than generateView()
+	(Interpreter::handleArgument): change terminology from generator
+	to transformer
+
+	* viewCache.hh (class ViewCache): generateView() ->
+	makeTransformedView()
+
+	* viewCache.cc (ViewCache::generateView): becomes
+	makeTransformedView()
+
+	* viewResultSymbol.hh (class ViewResultSymbol): generateView()
+	becomes makeTransformedView()
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): becomes
+	makeTransformedView()
+	(ViewResultSymbol::makeTransformedView): transformed view is an
+	user of input views
+
+	* moduleResultSymbol.hh (class ModuleResultSymbol): deleted data
+	member cachedTransformOp
+
+	* moduleResultSymbol.cc (ModuleResultSymbol::makeTransformation):
+	use getTransformOp() and makeStartDag()
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): use
+	makeStartDag()
+
+	* resultSymbol.cc (ResultSymbol::getTransformOp): move list of
+	flat modules to the end of the argument list
+
+	* resultSymbol.hh (class ResultSymbol): added decl for
+	makeStartDag()
+
+	* resultSymbol.cc (ResultSymbol::makeStartDag): added
+
+	* viewResultSymbol.hh: generators -> transformers in comment
+
+	* resultSymbol.hh (class ResultSymbol): added decl for
+	upViewList()
+
+	* resultSymbol.cc (ResultSymbol::upModuleList): added Assert()s
+	(ResultSymbol::upViewList): added
+
+	* resultSymbol.hh (class ResultSymbol): deleted decl for
+	getModuleKind()
+
+	* resultSymbol.cc (ResultSymbol::getModuleKind): deleted
+
+	* entity.hh (class Entity): set<> -> unordered_set<>
+
+2026-08-14  Saruman the White  <eker@eker10>
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView):
+	generatorModule -> ourModule
+
+	* resultSymbol.hh (class ResultSymbol): initialize
+	cachedTransformOp
+
+	* viewResultSymbol.hh (class ViewResultSymbol): deleted data
+	member cachedGeneratorOp
+
+	* resultSymbol.hh (class ResultSymbol): updated decl for
+	getTransformOp()
+
+	* resultSymbol.cc (ResultSymbol::getTransformOp): don't take
+	rangeKind argument
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): use
+	getTransformOp()
+
+	* resultSymbol.cc (ResultSymbol::getTransformOp): improve warnings
+	(ResultSymbol::getTransformOp): added Assert()s
+
+	* resultSymbol.hh (class ResultSymbol): added decls for
+	getTransformOp(), hasTransformFlag(), hasGoodDomain()
+	(class ResultSymbol): added data member cachedTransformOp
+
+	* resultSymbol.cc (ResultSymbol::hasTransformFlag): added
+	(ResultSymbol::hasGoodDomain): added
+	(ResultSymbol::getTransformOp): added
+
+	* resultSignature.cc: added viewListSymbol
+
+	* entry.cc (MixfixModule::addOpDeclaration):
+	TRANSFORM_RESULT_SYMBOL -> MODULE_RESULT_SYMBOL
+
+	* symbolType.hh (enum BasicTypes): TRANSFORM_RESULT_SYMBOL ->
+	MODULE_RESULT_SYMBOL
+
+	* specialSymbolTypes.cc: TRANSFORM_RESULT_SYMBOL ->
+	MODULE_RESULT_SYMBOL; TransformResultSymbol -> ModuleResultSymbol
+
+	* moduleCache.cc (ModuleCache::makeModuleTransformation):
+	getTransformResultSymbol() -> getModuleResultSymbol()
+
+	* fancySymbols.cc (MixfixModule::newFancySymbol):
+	TRANSFORM_RESULT_SYMBOL -> MODULE_RESULT_SYMBOL;
+	TransformResultSymbol -> ModuleResultSymbol
+
+	* entry.cc (MixfixModule::addOpDeclaration): transformResultSymbol
+	-> moduleResultSymbol
+
+	* mixfixModule.hh (class MixfixModule): class
+	TransformResultSymbol -> class ModuleResultSymbol;
+	transformResultSymbol -> moduleResultSymbol
+	(MixfixModule::getTransformResultSymbol): becomes
+	getModuleResultSymbol()
+
+	* mixfix.hh: class TransformResultSymbol -> class
+	ModuleResultSymbol
+
+	* moduleResultSymbol.cc: class TransformResultSymbol -> class
+	ModuleResultSymbol
+
+	* moduleResultSymbol.hh: class TransformResultSymbol -> class
+	ModuleResultSymbol
+
+	* moduleCache.cc: transformResultSymbol.hh ->
+	moduleResultSymbol.hh
+
+	* moduleResultSymbol.hh: was transformResultSymbol.hh
+
+	* mixfixModule.cc: transformResultSymbol.hh ->
+	moduleResultSymbol.hh
+
+	* moduleResultSymbol.cc: was transformResultSymbol.cc
+
+2026-08-06  Saruman the White  <eker@eker10>
+
+	* syntacticPreModule.cc (SyntacticPreModule::getFlatModule): check
+	for nullptr returned from getFlatSignature()
+	(SyntacticPreModule::getFlatSignature): 0 -> nullptr
+
+2026-08-03  Saruman the White  <eker@eker10>
+
+	* mixfixParser.hh (class MixfixParser): don't init
+	otfTranslationsMade here because it needs to be reset before each
+	parse
+
+	* makeGrammar.cc (MixfixModule::makeBubbleProductions): removed
+	commented out #ifdef BUBBLES
+
+	* mixfixParser.cc (MixfixParser::makeStrategy): use nullptr
+	(MixfixParser::makeTerm): use nullptr
+	(MixfixParser::makeTerm): removed commented out #ifdef BUBBLES
+	(MixfixParser::makeConditionFragment): use nullptr
+	(MixfixParser::makePrintList): use nullptr
+
+	* makeGrammar.cc (MixfixModule::makeParameterizedSortProductions):
+	insertVariableTerminal() becomes insertLeadTerminal()
+	(MixfixModule::makeGrammar): use nullptr
+	(MixfixModule::makePolymorphProductions): use nullptr
+
+	* mixfixParser.cc (MixfixParser::parseSentence): added comment
+	(MixfixParser::translateSpecialToken): added comments
+
+	* mixfixParser.hh (class MixfixParser): data member
+	variableTerminals becomes leadTerminals
+
+	* mixfixParser.cc (MixfixParser::translateSpecialToken):
+	variableTerminals -> leadTerminals
+
+	* mixfixParser.hh (MixfixParser::insertLeadTerminal): was
+	insertVariableTerminal()
+
+2026-08-02  Saruman the White  <eker@eker10>
+
+	* makeGrammar.cc (MixfixModule::makeComponentProductions): code
+	cleaning
+
+	* mixfixParser.hh (MixfixParser::insertKindTerminal): deleted
+	(class MixfixParser): deleted data member kindTerminals
+
+	* mixfixParser.cc (MixfixParser::translateSpecialToken): use
+	componentTerminals rahter than kindTerminals
+
+	* makeGrammar.cc (MixfixModule::makeComponentProductions): use
+	insertComponentTerminal() rather than insertKindTerminal()
+
+	* mixfixParser.cc (MixfixParser::MixfixParser): init
+	componentTerminals
+
+	* mixfixParser.hh (MixfixParser::insertComponentTerminal): added
+	(class MixfixParser): added data member componentTerminals
+
+	* makeGrammar.cc (MixfixModule::makeAttributeProductions):
+	MAKE_VARIABLE -> MAKE_PRINT_VARIABLE
+	(MixfixModule::makeComponentProductions): MAKE_VARIABLE ->
+	MAKE_OTF_VARIABLE_KNOWN_SORT
+	(MixfixModule::makeSpecialProductions): MAKE_VARIABLE ->
+	MAKE_OTF_VARIABLE_KNOWN_SORT
+
+	* mixfixParser.cc (MixfixParser::makeTerm): MAKE_VARIABLE ->
+	MAKE_OTF_VARIABLE_KNOWN_SORT
+	(MixfixParser::makePrintList): MAKE_VARIABLE ->
+	MAKE_PRINT_VARIABLE
+	(MixfixParser::makePrintListVariable): MAKE_VARIABLE ->
+	MAKE_OTF_VARIABLE_KNOWN_SORT
+
+	* mixfixParser.hh (enum SemanticActions): split MAKE_VARIABLE
+	action into MAKE_OTF_VARIABLE_KNOWN_SORT and MAKE_PRINT_VARIABLE
+	to avoid confusion
+
+	* mixfixParser.cc (MixfixParser::parseSentence): don't clear
+	otfKind
+
+	* mixfixParser.hh (class MixfixParser): deleted typedef VarSet and
+	data member otfKind
+
+	* mixfixParser.cc (MixfixParser::translateSpecialToken): handle
+	translation of otf extended scope variables using new mechanism
+	(MixfixParser::makeTerm): hanlde new otf extended scope mechanism
+	(MixfixParser::makePrintListVariable): hanlde new otf extended
+	scope mechanism
+
+	* mixfixParser.hh (class MixfixParser): updated decl for
+	makeOtfTranslation()
+
+	* mixfixParser.cc (MixfixParser::makeOtfTranslation): rewritten
+	with 3 args
+
+	* mixfixParser.hh (class MixfixParser): added decl for
+	makePrintListVariable()
+
+	* mixfixParser.cc (MixfixParser::makeTerm): clean up MAKE_VARIABLE
+	case
+	(MixfixParser::makePrintListVariable): added
+	(MixfixParser::makePrintList): use makePrintListVariable()
+
+	* makeGrammar.cc (MixfixModule::makeComponentProductions): clean
+	up kind variable code
+
+	* mixfixParser.cc (MixfixParser::translateSpecialToken): use
+	kindTerminals for otf variables whose srot is not a lead token
+
+	* mixfixParser.hh (enum SemanticActions): added MAKE_OTF_VARIABLE
+	to enum SemanticActions
+
+	* makeGrammar.cc (MixfixModule::makeComponentProductions): make
+	and insert kind terminals
+	(MixfixModule::makeComponentProductions): don't make variable
+	terminals for sorts which are not lead tokens
+
+	* mixfixParser.hh (class MixfixParser): added data member
+	kindTerminals
+	(MixfixParser::insertKindTerminal): added
+	(MixfixParser::insertSpecialTerminal)
+	(MixfixParser::insertVariableTerminal)
+	(MixfixParser::insertIterSymbolTerminal): moved here
+
+2026-08-01  Saruman the White  <eker@eker10>
+
+	* mixfixParser.hh (class MixfixParser): updated decl for
+	makeOtfTranslation()
+
+	* mixfixParser.cc (MixfixParser::parseSentence): clear otfKind
+	(MixfixParser::makeTerm): handle kind encoded using otfKind
+	(MixfixParser::makeOtfTranslations): use makeOtfTranslation() for
+	kinds
+	(MixfixParser::makeOtfTranslation): handle kind flag
+
+	* token.cc (Token::bubbleToPrefixNameCode): fix bug where we were
+	looking at opBubble[0] rather than opBubble[start] in the single
+	token case
+
+	* mixfixParser.hh (class MixfixParser): added decl for checkSortNames()
+	(class MixfixParser): added data member otfKind
+
+	* mixfixParser.cc (MixfixParser::checkSortNames): added
+
+	* sharedTokens.cc (SharedTokens::skip): handle multiple top level
+	instantiations and recognise rightBracket as a succcessful
+	conclusion
+
+	* mixfixParser.cc (MixfixParser::makeOtfTranslations): use skip()
+
+	* sharedTokens.cc (SharedTokens::skipKindName): use skip()
+
+	* sharedTokens.hh (class SharedTokens): skipSortName() -> skip();
+	added enum SkipType
+
+	* sharedTokens.cc (SharedTokens::skipSortName): becomes skip() and
+	takes SkipType argument
+
+	* mixfixParser.hh (class MixfixParser): updated decl for
+	makeOtfTranslation()
+
+	* mixfixParser.cc (MixfixParser::makeOtfTranslation): take an
+	extra argument and check for potentially fake otf variables
+	(MixfixParser::makeOtfTranslations): use new makeOtfTranslation()
+	convention and fix some corner cases
+
+	* sharedTokens.hh (class SharedTokens): added decl for
+	skipKindName()
+
+	* sharedTokens.cc (SharedTokens::skipKindName): added
+
+2026-07-31  Saruman the White  <eker@eker10>
+
+	* sharedTokens.hh (class SharedTokens): skipInstantiation() ->
+	skipSortName()
+
+	* sharedTokens.cc (SharedTokens::skipInstantiation): becomes
+	skipSortName() and takes instantiation argument
+
+	* mixfixParser.cc (MixfixParser::makeOtfTranslation): added
+	(MixfixParser::makeOtfTranslations): disable this if bubbles are
+	allowed
+
+	* token.hh (class Token): added decl for 3 arg version of
+	bubbleToPrefixNameCode()
+
+	* token.cc (Token::bubbleToPrefixNameCode): take 3 arguments
+
+	* token.hh (Token::bubbleToPrefixNameCode): added 1 arg wrapper
+
+	* sharedTokens.cc (SharedTokens::skipInstantiation): added
+
+	* mixfixParser.cc (MixfixParser::parseSentence): clear
+	otfTranslations and set otfTranslationsMade = false before start
+	of translation from input tokens to parser terminals
+
+	* mixfixParser.hh (class MixfixParser): added decl for
+	makeOtfTranslations()
+	(class MixfixParser): added data member oftTranslationsMade
+
+	* mixfixParser.cc (MixfixParser::makeOtfTranslations): added
+
+	* makeGrammar.cc (MixfixModule::makeComponentProductions): added
+	comments to explain how productions for on-the-fly variables work
+
+2026-07-30  Saruman the White  <eker@eker10>
+
+	* mixfixParser.cc (MixfixParser::parseSentence): code cleaning;
+	clear otfTranslations;
+	(MixfixParser::translateSpecialToken): support on-the-fly
+	translations
+	(MixfixParser::makeTerm): handle on-the-fly variable declarations
+	(MixfixParser::makePrintList): handle on-the-fly variable
+	declarations
+
+2026-07-29  Saruman the White  <eker@eker10>
+
+	* lexer.ll: deleted commented out variable terminationCondition
+
+	* lexerAux.hh: deleted unused typedef Transformer
+
+2026-07-27  Saruman the White  <eker@eker10>
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): no longer
+	protect()/unprotect() because we don't allow module and view
+	databases to be modified during a module expression evaluation;
+	deleted commented out debugging code
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): no longer
+	protect()/unprotect() because we don't allow module and view
+	databases to be modified during a module expression evaluation
+
+	* modules.yy (view): don't insertView() if databasesLocked()
+
+	* syntacticPreModule.cc (SyntacticPreModule::finishModule): don't
+	insertModule() if databasesLocked()
+
+	* interpreter.hh (Interpreter::databasesLocked): added
+
+2026-07-24  Saruman the White  <eker@eker10>
+
+	* view.cc (View::latexViewExpression): handle generated views
+	properly
+
+	* latexImportModule.cc (ImportModule::latexModuleExpression):
+	implement the TRANSFORMATION properly
+
+	* userLevelRewritingContext.hh (class UserLevelRewritingContext):
+	updated decl for checkForPrintAttribute()
+
+	* userLevelRewritingContext.cc
+	(UserLevelRewritingContext::checkForPrintAttribute): take redex;
+	do print in select case if id of top symbol of redex is selected
+	(UserLevelRewritingContext::tracePreEqRewrite): pass redex to
+	checkForPrintAttribute()
+	(UserLevelRewritingContext::tracePreRuleRewrite): ditto
+	(UserLevelRewritingContext::traceStrategyCall): pass callDag to
+	checkForPrintAttribute()
+	(UserLevelRewritingContext::tracePreScApplication): pass subject
+	to checkForPrintAttribute()
+
+	* interpreter.hh (Interpreter::unprotectCaches): fix comment
+	(class Interpreter): deleted commented out decl for
+	doFvuNarrowing()
+
+	* interpreter.cc (Interpreter::handleArgument): use Index
+	(Interpreter::makeModule): use Index
+	(Interpreter::makeModule): use getLineNr()
+	(Interpreter::handleArgument): use getLineNr()
+	(Interpreter::setCurrentModule): use getLineNr()
+	(Interpreter::setCurrentView): use getLineNr()
+	(Interpreter::handleArgument): added line numbers to the 2
+	generation case warnings that lacked them
+	(Interpreter::makeModule): added line number to tranform case
+	warnings
+
+	* interpreter.hh (class Interpreter): updated decl for
+	getModuleOrIssueWarning()
+
+	* interpreter.cc (Interpreter::endXmlLog): use nullptr
+	(Interpreter::endLatexLog): ditto
+	(Interpreter::setCurrentModule): ditto, both versions
+	(Interpreter::setCurrentView): ditto
+	(Interpreter::parse): ditto
+	(Interpreter::makeClean): ditto
+	(Interpreter::getModuleOrIssueWarning): take lineNumber by value
+	rather than const reference
+
+	* interpreter.hh (class Interpreter): init savedSolutionCount for
+	cleanliness even though we could leave it unitialized until needed
+
+	* interpreter.cc (Interpreter::Interpreter): removed all inits now
+	done in class decl
+
+	* interpreter.hh (class Interpreter): init xmlLog, xmlBuffer,
+	latexBuffer, currentModule, currentView, savedState, savedModule,
+	continueFunc here
+
+2026-07-23  Saruman the White  <eker@eker10>
+
+	* renameModule.cc (ImportModule::makeRenamedCopy): call
+	addInAllConflicts(); this fixes a bug that allowed instantiation
+	of conflicting parameters by theory views, as long as the module
+	had been renamed
+
+2026-07-21  Saruman the White  <eker@eker10>
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): converted
+	or commented out DebugAlways() calls introduced during debugging
+
+	* view.cc (View::~View): commented out DebugAlways() converted to
+	DebugInfo()
+	(View::regretToInform): DebugAlways() converted to DebugInfo()
+
+	* importModule.cc (ImportModule::regretToInform): commented out
+	DebugAlways() converted to DebugInfo()
+
+	* syntacticPreModule.cc (SyntacticPreModule::finishModule): no
+	longer care if we displaced a module, for similar reason
+
+	* modules.yy (view): no longer care if we displaced a view because
+	views can have arbitrary metalevel stuff running to generate their
+	paremeter theories, their from-theory and their to-module and this
+	can produce junk modules and views in the caches
+
+	* interpreter.hh (Interpreter::unprotectCaches): added
+
+	* modules.yy (view): call protectCaches()/unprotectCaches() around
+	finishView()
+
+	* syntacticPreModule.cc (SyntacticPreModule::finishModule): call
+	protectCaches()/unprotectCaches() around process()
+
+	* interpreter.hh (Interpreter::protectCaches): added
+	(class Interpreter): added data member cacheUserCount
+
+	* interpreter.cc (Interpreter::cleanCaches): becomes
+	tryToCleanCaches(); check cacheUserCount before doing  a
+	module/view garbage collection
+
+2026-07-20  Saruman the White  <eker@eker10>
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): fix typo
+
+	* interpreter.cc (Interpreter::handleArgument): fail early if we
+	fail to make an input module for view generation
+
+2026-07-19  Saruman the White  <eker@eker10>
+
+	* view.cc (View::evaluate): revert to checking
+	Token::isValidViewName(id())
+	(View::evaluate): don't do checking for generated views
+	(View::regretToInform): self destruct if an input module
+	disappears
+
+2026-07-18  Saruman the White  <eker@eker10>
+
+	* resultSymbol.hh (ResultSymbol::viewFailure): viewFailureSymbol
+	-> nilViewListSymbol
+
+	* resultSignature.cc: viewFailureSymbol -> nilViewListSymbol
+
+2026-07-17  Saruman the White  <eker@eker10>
+
+	* resultSymbol.cc (ResultSymbol::colorize): fix bug where quote
+	wasn't initialized
+
+	* resultSymbol.hh (class ResultSymbol): added decl for colorize()
+
+	* resultSymbol.cc (ResultSymbol::handleMessageList): take and pass
+	lineNumber
+	(ResultSymbol::handleMessage): take lineNumber and put it
+	advisories and warnings
+	(ResultSymbol::colorize): added
+	(ResultSymbol::handleMessage): use colorize() for advisories and
+	warnings
+
+	* viewResultSymbol.hh (class ViewResultSymbol): updated decl for
+	generateView()
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): take
+	lineNumber argument and pass it to handleMessageList()
+
+	* transformResultSymbol.hh (class TransformResultSymbol): updated
+	decl for makeTransformation()
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): take lineNumber
+	argument and pass it to handleMessageList()
+
+	* viewCache.hh (class ViewCache): updated decl for generateView()
+
+	* viewCache.cc (ViewCache::generateView): take lineNumber arugment
+	and pass it to generateView()
+
+	* moduleCache.hh (class ModuleCache): updated decl for
+	makeModuleTransformation()
+
+	* moduleCache.cc (ModuleCache::makeModuleTransformation): take
+	lineNumber arugment and pass it to makeTransformation()
+
+	* interpreter.cc (Interpreter::makeModule): pass line number to
+	makeModuleTransformation()
+	(Interpreter::handleArgument): pass line number to generateView()
+
+	* entity.cc (Entity::informUsers): added DebugAdvisory()
+
+	* importModule.cc (ImportModule::deepSelfDestruct): added comment
+	to explain why deepSelfDestruct() is needed
+
+	* view.cc (View::~View): remove ourself as a user of each of our
+	input modules
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): make
+	resultView a user of each of the input modules
+
+2026-07-16  Saruman the White  <eker@eker10>
+
+	* resultSymbol.cc (ResultSymbol::upModuleList): fix bug where we
+	weren't incrementing the index; use addQuotes() to make module
+	name
+
+	* token.hh (class Token): added decl for quoteNameCode()
+
+	* token.cc (Token::addQuotes): added
+
+	* resultSymbol.cc (ResultSymbol::handleMessage): include line
+	number and operator name in bad system message warning
+
+	* viewCache.cc (ViewCache::generateView): include line number in
+	warning
+
+	* moduleCache.cc (ModuleCache::makeModuleTransformation): include
+	line number in warning
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): don't proceed if
+	there are multiple transform operators in a module
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): put line
+	numbers and more detail in warnings
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): put line numbers and
+	more detail in warnings
+
+	* resultSymbol.cc (ResultSymbol::handleMessage): no longer
+	specific to view generation
+
+	* resultSymbol.hh (ResultSymbol::multipleModules): added
+	(ResultSymbol::noModules): added
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): use upModuleList()
+	(TransformResultSymbol::makeTransformation): use
+	handleMessageList()
+	(TransformResultSymbol::makeTransformation): rewritten
+	(TransformResultSymbol::handleMessage): deleted
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): viewName
+	-> newViewName
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::TransformResultSymbol): pass args to
+	ResultSymbol ctor
+	(TransformResultSymbol::getDataAttachments): fix bug where we were
+	returning TransformResultSymbol rather than TransformResultSymbol
+	(TransformResultSymbol::getSymbolAttachments): deleted
+	(TransformResultSymbol::copyAttachments): deleted
+	(TransformResultSymbol::attachSymbol): deleted
+	(TransformResultSymbol::getDataAttachments): call
+	ResultSymbol::getDataAttachments()
+	(TransformResultSymbol::attachData): call
+	ResultSymbol::attachData()
+	(TransformResultSymbol::makeTransformation): pass qidMap to upQidList()
+
+	* transformResultSymbol.hh (class TransformResultSymbol): derive from
+	ResultSymbol
+
+	* mixfix.hh: added ResultSymbol
+
+	* viewResultSymbol.cc (ViewResultSymbol::getDataAttachments): fix
+	bug where we were returning ViewResultOpSymbol rather than
+	ViewResultSymbol
+	(ViewResultSymbol::ViewResultSymbol): pass args to ResultSymbol
+	ctor
+	(ViewResultSymbol::attachSymbol): deleted
+	(ViewResultSymbol::getSymbolAttachments): deleted
+	(ViewResultSymbol::copyAttachments): deleted
+	(ViewResultSymbol::generateView): pass qidMap to upQidList()
+	(ViewResultSymbol::generateView): use getMetaLevel() and
+	getModuleKind()
+	(ViewResultSymbol::handleMessage): deleted
+	(ViewResultSymbol::upModuleList): deleted
+	(ViewResultSymbol::generateView): rewritten
+
+	* viewResultSymbol.hh (class ViewResultSymbol): derive from
+	ResultSymbol
+
+2026-07-14  Saruman the White  <eker@eker10>
+
+	* moduleCache.cc (ModuleCache::makeModuleTransformation): take
+	options as const Vector<int>&
+
+	* moduleCache.hh (class ModuleCache): updated decl for
+	makeModuleTransformation()
+
+	* moduleExpression.cc (ModuleExpression::ModuleExpression): now
+	take const Vector<int>& options
+	(ModuleExpression::latexPrint): use ints rather than Tokens
+	(<<): ditto
+
+	* modules.yy (transformExpr): pass options as Vector<int>&
+
+	* moduleExpression.hh (class ModuleExpression): updated decl for
+	transform ctor
+	(ModuleExpression::getOptions): return const Vector<int>&
+	(class ModuleExpression): store options as Vector<int>
+
+	* interpreter.cc (Interpreter::makeModule): allow free parameters
+	in input modules to transform
+
+	* viewResultSymbol.hh (class ViewResultSymbol): deleted data
+	member metaLevel
+
+	* viewResultSymbol.cc (ViewResultSymbol::upModuleList): get
+	metalevel from shareWith
+
+2026-07-13  Saruman the White  <eker@eker10>
+
+	* viewResultSymbol.hh (class ViewResultSymbol): added decl for
+	upModuleList()
+
+	* viewResultSymbol.cc (ViewResultSymbol::upModuleList): added
+
+	* viewResultSignature.cc: added nilModuleListSymbol,
+	moduleListSymbol
+
+	* view.cc (View::printViewExpression): updated comment to explain
+	generation case
+
+	* viewExpression.hh (ViewExpression::getView): fix Assert()
+	message
+	(ViewExpression::getArguments): ditto
+
+	* viewExpression.cc (ViewExpression::deepSelfDestruct):
+	refactored; handle generation case
+
+	* interpreter.cc (Interpreter::handleArgument): construct
+	inputModules and pass them to generateView()
+
+	* viewCache.hh (class ViewCache): updated decl for generateView()
+
+	* viewCache.cc (ViewCache::generateView): take and pass
+	inputModules; incorporate inputModules into name
+
+	* viewResultSymbol.hh (class ViewResultSymbol): updated decl for
+	generateView()
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): take
+	inputModules
+	(ViewResultSymbol::generateView): pass inputModules to
+	setGenerationInfo()
+
+	* view.hh (View::getInputModules): added
+	(View::setGenerationInfo): take inModules
+	(class View): added date member inputModules
+
+	* importModule.cc (ImportModule::importStrategies): fix comment
+	formatting
+
+2026-07-09  Saruman the White  <eker@eker10>
+
+	* viewExpression.cc (ViewExpression::ViewExpression): updated ctor
+	for view generator case
+	(<<): handle new syntax for view generators
+	(ViewExpression::latexPrint): handle new syntax for view generators
+
+	* modules.yy (viewExpr): use new ViewExpression view generator
+	ctor
+
+	* viewExpression.hh (ViewExpression::getInputModules): added
+	(class ViewExpression): added data member inputModules; updated
+	decl for view generator ctor
+
+	* modules.yy (viewExpr): use transOptions
+
+2026-07-05  Saruman the White  <eker@eker10>
+
+	* viewExpression.hh (ViewExpression::isInstantiation): deleted
+
+	* view.hh (View::getGeneratorModule): added
+	(View::getGenerationOptions): added
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): fix bug
+	where we were making the generatorModule a user of resultView
+	rather than vice versa
+
+	* view.cc (View::View): don't init status, fromExpr, toExpr,
+	fromTheory, toModule in any ctor
+
+	* view.hh (class View): initialize status, fromExpr, toExpr,
+	fromTheory, toModule here
+
+	* view.cc (View::~View): reorganized
+
+	* moduleCache.cc (ModuleCache::~ModuleCache): dump remaining
+	entries in NO_ASSERT case code #ifdef'd
+
+	* viewCache.cc (ViewCache::~ViewCache): dump remaining entries in
+	NO_ASSERT case
+
+2026-07-04  Saruman the White  <eker@eker10>
+
+	* view.cc (View::evaluate): check cleanName rather than true name
+	for validity
+
+	* view.hh (class View): added decl for new ctor
+
+	* view.cc (View::View): added new ctor for metaview/generated view
+
+2026-07-03  Saruman the White  <eker@eker10>
+
+	* view.cc (View::evaluate): hack to allow view names with ()s
+
+	* interpreter.cc (Interpreter::handleArgument): evaluate()
+	generated view and check it
+
+	* viewCache.cc (ViewCache::generateView): take options as const
+	Vector<int>&
+
+	* viewCache.hh (class ViewCache): updated decl for generateView()
+
+	* interpreter.cc (Interpreter::handleArgument): refactored; use
+	getType()
+	(Interpreter::handleArgument): hanlde the generation case
+
+	* viewCache.hh (class ViewCache): added decl for generateView()
+
+	* viewCache.cc (ViewCache::generateView): added
+
+	* view.cc (View::latexViewExpression): added FIXME about generated
+	modules
+
+	* transformResultSymbol.hh: deleted decl for flattenModule()
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): fix Warning() now
+	that we don't have explicit transform operators
+	(TransformResultSymbol::flattenModule): deleted
+	(TransformResultSymbol::makeTransformation): deleted commented out
+	calls to flattenModule()
+
+	* viewResultSymbol.hh (class ViewResultSymbol): viewModule ->
+	generatorModule()
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): viewModule
+	-> generatorModule()
+	(ViewResultSymbol::generateView): cachedViewOp ->
+	cachedGeneratorOp
+
+	* view.cc (View::~View): remove ourselves as a user of
+	generatorModule
+
+	* viewResultSymbol.cc (ViewResultSymbol::generateView): call
+	setGenerationInfo()
+
+	* view.hh (ImportModule::setGenerationInfo): added
+
+	* view.cc (View::printViewExpression): added comment to explain
+	why we don't handle generated views specially
+
+	* view.hh (class View): added data members generatorModule and
+	generationOptions
+
+	* viewResultSignature.cc: fix comment
+
+	* mixfix.hh: added class ViewResultSymbol
+
+	* mixfixModule.hh (class MixfixModule): added data member
+	viewResultSymbol
+	(MixfixModule::getViewResultSymbol): added
+
+	* entry.cc (MixfixModule::addOpDeclaration): set viewResultSymbol
+
+	* fancySymbols.cc (MixfixModule::newFancySymbol): added
+	ViewResultSymbol
+
+	* symbolType.hh (enum BasicTypes): added VIEW_RESULT_SYMBOL
+
+	* specialSymbolTypes.cc: added ViewResultSymbol
+
+2026-07-02  Saruman the White  <eker@eker10>
+
+	* viewResultSignature.cc: created
+
+	* viewResultSymbol.hh: created
+
+	* viewResultSymbol.cc: created
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): use
+	finishFlattening()
+
+	* importModule.hh (class ImportModule): added decl for
+	finishFlattening()
+
+	* importModule.cc (ImportModule::finishFlattening): added
+
+2026-07-01  Saruman the White  <eker@eker10>
+
+	* modules.yy (viewExpr): added syntax and semantics for view
+	generator calls
+
+	* viewExpression.cc (ViewExpression::ViewExpression): initialize
+	type (all ctors)
+	(<<): use type; support view generation
+	(ViewExpression::latexPrint): use type; support view generation
+	(ViewExpression::deepSelfDestruct): use type
+
+	* viewExpression.hh (enum Type): added
+	(class ViewExpression): added data member type
+	(class ViewExpression): added declaration for generator case ctor
+	(ViewExpression::getType): added
+	(ViewExpression::getName, ViewExpression::getView)
+	(ViewExpression::getArguments): check type
+	(ViewExpression::getOptions): added
+
+	* interpreter.cc (Interpreter::makeModule): deleted out-dated
+	comment
+	(Interpreter::makeModule): code cleaning
+	(Interpreter::handleArgument): deleted commented out
+	IssueAdvisory()
+
+2026-06-29  Saruman the White  <eker@eker10>
+
+	* importModule.hh (ImportModule::setTransformInfo)
+	(ImportModule::getBaseModule, ImportModule::getArguments)
+	(ImportModule::getTransformModule)
+	(ImportModule::getInputModules)
+	(ImportModule::getTransformOptions): output the module name in
+	Assert()
+
+2026-06-28  Saruman the White  <eker@eker10>
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): use Verbose() for
+	start and result dags
+
+	* instantiateModuleWithFreeParameters.cc
+	(ImportModule::handleRegularImports): fix known bug with
+	importation mode
+
+	* view.hh (View::getBaseView): added
+	(View::getArguments): added
+
+	* importModule.hh (ImportModule::getBaseModule): added
+	(ImportModule::getArguments): added
+	(ImportModule::getTransformModule): added
+	(ImportModule::getInputModules): added
+	(ImportModule::getTransformOptions): added
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): use setTranformInfo()
+	in place of setTransformModule(), setInputModules(), setTransformOptions()
+
+	* importModule.hh (ImportModule::setTransformModule)
+	(ImportModule::setInputModules)
+	(ImportModule::setTransformOptions): replaced with setTransformInfo()
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): call
+	setTransformOptions()
+
+	* importModule.cc (ImportModule::deepSelfDestruct): removed self
+	as user from inputModules and transformModule rather than
+	otherUsedModules
+
+	* importModule.hh (class ImportModule): added data members
+	transformModule and inputModules; deleted data member
+	otherUsedModules
+	(class ImportModule): added data member transformOptions
+	(ImportModule::setTransformOptions): added
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): use
+	setTransformModule() and setInputModules() rather than
+	addUsedModule()
+
+	* importModule.hh (ImportModule::setInputModules): added
+	(ImportModule::setTransformModule): added
+	(ImportModule::addUsedModule): deleted
+
+	* process.cc (SyntacticPreModule::process): pass origin as TEXT to
+	VisibleModule()
+
+	* visibleModule.hh (class VisibleModule): updated decl for ctor
+
+	* visibleModule.cc (VisibleModule::VisibleModule): take and pass origin
+
+	* importModule.hh (class ImportModule): updated decl for ctor
+
+	* importModule.cc (ImportModule::ImportModule): take origin in
+	both ctors
+
+	* visibleModule.hh: added explanation of why it exists
+
+	* latexImportModule.cc (ImportModule::latexModuleExpression):
+	added quick hack for TRANSFORMATION case
+
+	* importModule.cc (ImportModule::printModuleExpression): handle
+	TRANSFORMATION case
+
+	* importModule.hh (enum Origin): added back TRANSFORMATION
+
+2026-06-26  Saruman the White  <eker@eker10>
+
+	* interpreter.cc (Interpreter::makeModule): change test for bound
+	parameters in a transformer module to an Assert() as there should
+	be no way of writing such in the new restricted syntax
+
+	* importModule.hh (enum Origin): deleted TRANSFORMATION
+
+	* moduleExpression.cc (ModuleExpression::latexPrint): handle new
+	transform syntax
+
+	* transformResultSymbol.hh (class TransformResultSymbol): updated
+	decl for makeTransformation()
+
+	* moduleCache.hh (class ModuleCache): updated decl for
+	makeModuleTransformation()
+
+	* moduleCache.cc (ModuleCache::makeModuleTransformation): don't
+	pass opName to makeTransformation()
+
+	* interpreter.cc (Interpreter::makeModule): don't pass op name to
+	makeModuleTransformation()
+
+	* lexerAux.hh: deleted typedef Transformer
+
+	* top.yy: deleted yyTransformer; deleted its %destructor; deleted
+	decl for transformer
+
+	* modules.yy (transformExpr): use new convention
+	(transformer): deleted
+
+	* moduleExpression.cc (ModuleExpression::ModuleExpression): use
+	new convention
+	(ModuleExpression::deepSelfDestruct): don't deepSelfDestruct()
+	module
+	(<<): use new convention
+
+	* moduleExpression.hh (class ModuleExpression): deleted opName;
+	updated transform ctor
+	(ModuleExpression::getModuleName): allow TRANSFORM
+	(ModuleExpression::getModule): disallow TRANSFORM
+	(ModuleExpression::getOpName): deleted
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): make resultModule a
+	user of transformModule and inputModules; add transformModule and
+	inputModules to resultModule as used modules
+
+	* importModule.cc (ImportModule::deepSelfDestruct): remove ourself
+	as user of otherUsedModules
+
+	* importModule.hh (class ImportModule): added data member
+	otherUsedModules
+	(ImportModule::addUsedModule): added
+
+	* importModule.cc (ImportModule::deepSelfDestruct): added
+	DebugEnter()
+
+	* entity.cc (<<): handle ModuleCache and ViewCache cases
+
+	* viewCache.cc (ViewCache::regretToInform): updated
+	DebugAdvisory()
+
+	* moduleCache.cc (ModuleCache::regretToInform): updated
+	DebugAdvisory()
+
+	* entity.cc: uncomment all DebugAdvisory()s
+	(Entity::informUsers): add DebugAdvisory() for users that don't
+	removed themselves
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation):
+	nilTransformMessageListSymbol -> nilSystemMsgListSymbol,
+	transformMessageListSymbol -> systemMsgListSymbol
+
+	* transformResultSignature.cc: nilTransformMessageListSymbol ->
+	nilSystemMsgListSymbol, transformMessageListSymbol ->
+	systemMsgListSymbol
+
+2026-06-25  Saruman the White  <eker@eker10>
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): call downSignature()
+	(TransformResultSymbol::makeTransformation): pass newModuleName to
+	downSignature()
+
+	* moduleCache.hh (class ModuleCache): updated decl for
+	makeModuleTransformation()
+
+	* moduleCache.cc (ModuleCache::makeModuleTransformation): take and
+	pass owner argument
+
+	* transformResultSymbol.hh (class TransformResultSymbol): updated
+	decl for makeTransformation()
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): added owner argument
+
+2026-06-24  Saruman the White  <eker@eker10>
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::~TransformResultSymbol): deleted
+	(TransformResultSymbol::handleMessage): be smarter about printing
+	messages; use downString()
+
+	* transformResultSymbol.hh (class TransformResultSymbol):
+	prepareForRewriting() -> flattenModule()
+	(class TransformResultSymbol): deleted decl for
+	~TransformResultSymbol()
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::prepareForRewriting): becomes
+	flattenModule()
+	(TransformResultSymbol::makeTransformation): use flattenModule()
+	instead of prepareForRewriting(); flatten input modules
+
+	* transformResultSymbol.hh (class TransformResultSymbol): added
+	decl for prepareForRewriting()
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::prepareForRewriting): added
+
+2026-06-23  Saruman the White  <eker@eker10>
+
+	* transformResultSignature.cc: made advisory, warning and verbose
+	symbols FreeSymbols
+
+	* transformResultSymbol.hh (class TransformResultSymbol): added
+	decl for handleMessage()
+
+	* transformResultSymbol.cc (TransformResultSymbol::handleMessage):
+	added
+
+	* interpreter.cc (Interpreter::makeModule): removed unimplmented
+	warning
+	(Interpreter::makeModule): need to use getInputModules(), not
+	getModules()
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): partly implmented
+
+2026-06-22  Saruman the White  <eker@eker10>
+
+	* moduleCache.cc (ModuleCache::makeModuleTransformation): implemented
+
+	* importModule.hh (enum Origin): added TRANSFORMATION
+
+	* transformResultSymbol.hh (class TransformResultSymbol): added
+	decl for makeTransformation()
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::makeTransformation): added stub
+
+	* moduleCache.hh (class ModuleCache): added decl for
+	makeModuleTransformation()
+
+	* moduleCache.cc (ModuleCache::makeModuleTransformation): added
+	stub
+
+	* interpreter.cc (Interpreter::makeModule): call
+	makeModuleTransformation()
+
+	* transformResultSymbol.cc
+	(TransformResultSymbol::TransformResultSymbol): don't init
+	pointers here
+
+	* transformResultSymbol.hh (class TransformResultSymbol): data
+	member cachedImplicitTransformer renamed to cachedTransformOp
+	(MACRO): initialize symbol pointers here
+
+	* interpreter.cc (Interpreter::makeModule): check for free
+	parameters in transformer module
+
+2026-06-21  Saruman the White  <eker@eker10>
+
+	* mixfixModule.hh (MixfixModule::getTransformResultSymbol): added
+
+	* entry.cc (MixfixModule::addOpDeclaration): set
+	transformResultSymbol
+
+	* mixfixModule.hh (class MixfixModule): added data member
+	transformResultSymbol
+
+	* mixfix.hh: added class TransformResult
+
+	* ops.cc (SyntacticPreModule::setMetadata): fix bug where we
+	printing out a raw line number
+
+	* transformResultSymbol.hh (class TransformResultSymbol): added
+	decls for attachData(), getDataAttachments()
+
+	* transformResultSymbol.cc (TransformResultOpSymbol::attachData):
+	added
+	(TransformResultOpSymbol::getDataAttachments): added
+
+	* symbolType.hh (enum BasicTypes): added TRANSFORM_RESULT_SYMBOL
+
+	* specialSymbolTypes.cc: added TransformResultSymbol
+
+	* fancySymbols.cc (MixfixModule::newFancySymbol): added
+	TransformResultSymbol
+
+2026-06-20  Saruman the White  <eker@eker10>
+
+	* transformResultSymbol.cc: created
+
+	* transformResultSymbol.hh (class TransformResultSymbol): created
+
+	* transformResultSignature.cc: created
+
+2026-06-19  Saruman the White  <eker@eker10>
+
+	* enclosingObject.hh (class EnclosingObject): fixed typo in
+	comment
+
+	* moduleExpression.cc (<<): pass NO_CONCERNS to
+	MixfixModule::prettyOpName()
+
+	* token.hh (enum ProblemSituations): added NO_CONCERNS
+
+	* moduleExpression.cc (<<): use MixfixModule::prettyOpName() for
+	opName
+
+	* modules.yy (transOptions): allow empty options bubble
+
+	* interpreter.cc (Interpreter::makeModule): dummy handling for
+	TRANSFORM case
+
+	* moduleExpression.cc (ModuleExpression::ModuleExpression):
+	transformArguments -> options
+	(<<): getTransformArguments() -> getOptions()
+	(ModuleExpression::latexPrint): transformArguments -> options
+
+	* moduleExpression.hh (class ModuleExpression): data member
+	transformArguments -> options
+	(ModuleExpression::getTransformArguments): becomes getOptions()
+
+	* moduleExpression.cc (<<): handle new transform syntax
+
+	* moduleExpression.hh (ModuleExpression::getOpName): added
+	(ModuleExpression::getInputModules): added
+
+2026-06-12  Saruman the White  <eker@eker10>
+
+	* moduleExpression.cc (ModuleExpression::deepSelfDestruct):
+	deepSelfDestruct() inputModules
+
+	* moduleExpression.hh (ModuleExpression::getModule): allow
+	TRANSFORM
+
+	* modules.yy (transformer): make Transformer pairs
+	(transformExpr): use new ModuleExpression ctor
+
+	* top.yy: added %destructor for yyTransformer
+
+	* lexerAux.hh (struct Transformer): added struct Transformer
+
+	* moduleExpression.hh (class ModuleExpression): updated decl fro
+	TRANSFORM ctor
+
+	* moduleExpression.cc (ModuleExpression::ModuleExpression):
+	updated arguments
+
+	* top.yy: added %destructor for yyModuleExpressionVector; added
+	type for transInput
+
+	* modules.yy (transInput): use moduleExprList
+
+	* top.yy: added decl for deepSelfDestructModuleExpressionVector();
+	added yyModuleExpressionVector to %union
+
+	* bottom.yy: added deepSelfDestructModuleExpressionVector()
+
+2026-06-11  Saruman the White  <eker@eker10>
+
+	* moduleExpression.hh (class ModuleExpression): updated decl for
+	transform ctor
+
+	* moduleExpression.cc (ModuleExpression::ModuleExpression):
+	updated transform ctor
+
+	* modules.yy (moduleExpr4): added
+	(transformer): added
+	(transInput): added
+	(optTransOptions): added
+	(transOptions): added
+	(transformOp): deleted
+	(optModuleExpr): deleted
+	(optArguments): deleted
+
+	* top.yy: added moduleExpr4, deleted optModuleExpr
+
+2026-06-10  Saruman the White  <eker@eker10>
+
+	* top.yy: deleted optToken
+
+	* modules.yy (transformOptions): deleted
+	(optArguments): added
+	(optModuleExpr): added
+	(optList): deleted
+	(optToken): deleted
+
+	* top.yy: added type for optModuleExpr
+
+2026-06-09  Saruman the White  <eker@eker10>
+
+	* interpreter.cc (Interpreter::makeModule): dummy code for
+	TRANSFORM case
+
+	* moduleExpression.hh (class ModuleExpression): updated decl for
+	transform ctor
+
+	* moduleExpression.cc (ModuleExpression::ModuleExpression): take
+	op name
+
+	* modules.yy (moduleExprDot): added transformExpr case
+
+	* moduleExpression.cc (ModuleExpression::latexPrint): handle
+	TRANSFORM case
+
+	* moduleExpression.hh (ModuleExpression::getTransformArguments):
+	added
+
+	* moduleExpression.cc (ModuleExpression::ModuleExpression): fill
+	out transform arguments
+	(<<): handle TRANSFORM case
+
+	* moduleExpression.hh (class ModuleExpression): added
+	transformArguments data member
+
+	* moduleExpression.cc (ModuleExpression::ModuleExpression): added
+	transform ctor
+	(ModuleExpression::deepSelfDestruct): handle transform case
+
+	* moduleExpression.hh (enum Type): added TRANSFORM
+
+	* top.yy: added transformExpr type
+
+	* modules.yy (optToken): added
+	(optList): added
+	(transformOptions): added
+	(transformExpr): added
+	(moduleExpr3): support transformExpr
+
+	* top.yy: added optToken type
+
+	* moduleExpression.hh (ModuleExpression): added ctor for module
+	transformations
+
+2026-06-02  Saruman the White  <eker@eker10>
+
+	* userLevelRewritingContext.cc
+	(UserLevelRewritingContext::checkForPrintAttribute): added check
+	for PRINT_ATTRIBUTE_SELECT
+
+	* interpreter.hh (Interpreter::printAttributeSelect): added
+	(class Interpreter): added data member printAttributeIds
+	(Interpreter::printAttributeId): added
+
+	* commands.yy (command): added syntax for print attribute
+	select/deselect
+
+	* interpreter.cc (Interpreter::updateSet): use IdSet
+
+	* interpreter.hh (class Interpreter): added and use IdSet
+
+	* commands.yy: added syntax for set print attribute select
+
+	* interpreter.hh (enum Flags): added PRINT_ATTRIBUTE_SELECT
+	(enum Flags): deleted commented out PRINT_ATTRIBUTE_MB,
+	PRINT_ATTRIBUTE_EQ, PRINT_ATTRIBUTE_RL
+
+2026-04-21  Saruman the White  <eker@eker10>
+
+	* process.cc (SyntacticPreModule::processImports): fix bug by not
+	allowing automatic imports with free parameters
+
+	* importModule.hh (class ImportModule): added decl for
+	deleteParameters()
+
+	* importModule.cc (ImportModule::addImport): handle attempt to
+	make a parameterized theory
+	(ImportModule::deleteParameters): added
+
+2026-04-20  Saruman the White  <eker@eker10>
+
+	* maudeLatexBuffer.cc (MaudeLatexBuffer::generateBanner): updated
+	copyright year
+
+	* banner.cc (printBanner): updated copyright year
+
+	* latexPreModulePrint.cc (SyntacticPreModule::latexShowModule):
+	handle make statements
+
+	* preModule.cc (PreModule::addParameter): turned cout << into
+	DebugInfo(); fixed spelling typo
+
+	* importModule.cc (ImportModule::addImport): transform make
+	statements into a module of the type they import
+
+	* mixfixModule.hh (MixfixModule::setModuleType): added
+
+	* mixfixModule.cc (MixfixModule::moduleTypeString): handle
+	MAKE_STATEMENT
+	(MixfixModule::moduleEndString): handle MAKE_STATEMENT
+
+	* mixfixModule.hh (enum Bits): added MADE bit
+
+	* syntacticPreModule.cc (SyntacticPreModule::SyntacticPreModule):
+	support make startToken
+	(SyntacticPreModule::compatible): support make startToken
+
+	* specialTokens.cc: added make
+
+	* mixfixModule.hh (enum ModuleType): added MAKE_STATEMENT
+	ModuleType
+
+	* modules.yy (module): added syntax for make command
+
+	* lexer.ll: added make keyword
+
+	* top.yy: added KW_MAKE
+
+2026-02-19  Rubén Rubio  <rubenrub@ucm.es>
+
+	* yices2_Bindings.cc: added YICES_ prefix no STATUS constants for
+	compatibility with Yices 2.7 (and temporary compatibility code)
+
+2026-02-10  Saruman the White  <eker@eker10>
+
+	* commutativeDecomposeEqualitySymbol.hh (class
+	CommutativeDecomposeEqualitySymbol): added decls for static 3 arg
+	eqRewrite(), compileEquations(); made many overloaded member
+	functions protected
+
+	* commutativeDecomposeEqualitySymbol.cc
+	(CommutativeDecomposeEqualitySymbol::compileEquations): added
+	(CommutativeDecomposeEqualitySymbol::eqRewrite): added static 3
+	arg version
+	(CommutativeDecomposeEqualitySymbol::eqRewrite): use
+	normalizeAndTryEquations() rather than FreeSymbol::eqRewrite() as
+	a backstop
+
+	* quotedIdentifierOpSymbol.hh (class QuotedIdentifierOpSymbol):
+	added decls for static 3 arg eqRewrite(), compileEquations(); made
+	many overloaded member functions protected
+
+	* quotedIdentifierOpSymbol.cc
+	(QuotedIdentifierOpSymbol::eqRewrite): added static 3 arg version
+	(QuotedIdentifierOpSymbol::compileEquations): added
+	(QuotedIdentifierOpSymbol::eqRewrite): use tryEquations() rather
+	than FreeSymbol::eqRewrite() as a backstop
+
+2026-01-20  Rubén Rubio  <rubenrub@ucm.es>
+
+	* lexer.ll (id): added rpo to BAR_OP_ATTRIBUTE termination
+	tokens
+
+2025-12-19  Saruman the White  <eker@eker10>
+
+	* fixUp.cc (SyntacticPreModule::fixUpSymbol): fix comments; if we
+	have an identity but not a BinarySymbol due to error recovery, we
+	will have clear the identity flags in symbolType
+	(SyntacticPreModule::fixUpSymbol): use safeCastNonNull<>()
+
+	* entry.cc (MixfixModule::addOpDeclaration): fix ditto warning
+	because combining it with metadata is allowed
+
+2025-12-16  Saruman the White  <eker@eker10>
+
+	* entry.cc (MixfixModule::addOpDeclaration): store rawStrategy
+	(MixfixModule::compatible): check strategy
+
+	* mixfixModule.hh (struct SymbolInfo): added data member
+	rawStrategy
+
+	* entry.cc (MixfixModule::compatible): check gather
+
+2025-12-03  Saruman the White  <eker@eker10>
+
+	* entry.cc (MixfixModule::compatible): check format
+	(MixfixModule::compatible): check frozen
+
+2025-12-02  Saruman the White  <eker@eker10>
+
+	* entry.cc (MixfixModule::compatible): added
+	(MixfixModule::addOpDeclaration): use compatible
+
+	* mixfixModule.hh (class MixfixModule): added decl for
+	compatible()
+
+2025-09-26  Rubén Rubio  <rubenrub@ucm.es>
+
+	* cvc5_Bindings.cc: added
+
+	* cvc5_Bindings.hh: added
+
+	* variableGenerator.cc: conditionally include cvc5_Bindings
+
+	* variableGenerator.hh: conditionally include cvc5_Bindings
+
+2025-07-31  Saruman the White  <eker@eker10>
+
+	* token.cc (Token::ropeToPrefixNameCode): hoist !isprint(c) check
+	out of branches
+	(Token::ropeToPrefixNameCode): support UTF-8 encodings
+
+2025-07-24  Saruman the White  <eker@eker10>
+
+	* process.cc (SyntacticPreModule::processSubsorts): don't require
+	sorts in subsort declarations to be declared
+
+	* syntacticPreModule.hh (class SyntacticPreModule): updated decl
+	for getSort()
+
+	* process.cc (SyntacticPreModule::getSort): use line number from
+	token rather than FileTable::SYSTEM_CREATED in the case of an
+	undeclared sort; have option to allow undeclared sorts
+
+2025-07-29  Rubén Rubio <rubenrub@ucm.es>
+
+	* command.cc (printAttributes): added rpo
+
+	* entry.cc (addOpDeclaration): handle rpo
+	(addPolymorph): handle rpo
+
+	* latexModulePrint.cc (latexShowAttributes): added rpo
+	(latexShowPolymorphAttributes): added rpo
+
+	* lexer.ll: added KW_RPO
+
+	* mixfixModule.hh (class MixfixModule): added rpo arg
+	to addOpDeclaration and addPolymorph, added getRpo and
+	getPolymorphRpo methods
+
+	* modules.yy: added rpo rules
+
+	* ooProcess.cc (processClassOps): pass NONE rpo to
+	addOpDeclaration
+
+	* ops.cc (setRpo): added
+
+	* process.cc (processOps): pass rpo to addPolymorph and
+	addOpDeclaration
+
+	* renameModule.cc (donateOps2): handle rpo
+
+	* renaming.cc (makeCanonicalName): added rpo
+	(isIdentityOpMapping): consider rpo
+	(setRpo): added
+	(printRenaming): print rpo
+
+	* renaming.hh (class Renaming): declare setRpo and getRpo
+	methods, and rpo attribute
+
+	* symbolType.hh (class SymbolType): add RPO flag
+
+	* syntacticPreModule.hh (class SyntacticPreModule): added
+	setRpo
+	(struct SyntacticPreModule::OpDef): added rpo attribute
+
+	* top.yy: added KW_RPO
+
+	* visibleModule.cc (showPolymorphAttributes): added rpo
+	(showAttributes): added rpo
+
+===================================Maude164===========================================
+
 2025-07-11  Rubén Rubio <rubenrub@ucm.es>
 
 	* makeGrammar.cc (MixfixModule::makeSpecialProductions):

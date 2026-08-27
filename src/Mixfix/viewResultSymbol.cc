@@ -1,0 +1,169 @@
+/*
+
+    This file is part of the Maude 3 interpreter.
+
+    Copyright 2026 SRI International, Menlo Park, CA 94025, USA.
+
+    This program is free software; you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation; either version 2 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program; if not, write to the Free Software
+    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
+
+*/
+
+//
+//      Implementation for class ViewResultSymbol.
+//
+
+//      utility stuff
+#include "macros.hh"
+#include "vector.hh"
+#include "pointerMap.hh"
+
+//      forward declarations
+#include "interface.hh"
+#include "core.hh"
+#include "freeTheory.hh"
+#include "AU_Theory.hh"
+#include "mixfix.hh"
+#include "higher.hh"
+#include "meta.hh"
+
+//      interface class definitions
+#include "symbol.hh"
+#include "dagNode.hh"
+
+//      free class definitions
+#include "freeDagNode.hh"
+
+//      MetaLevel class definitions
+#include "metaLevel.hh"
+
+//	mixfix class definitions
+#include "viewResultSymbol.hh"
+
+ViewResultSymbol::ViewResultSymbol(int id)
+  : ResultSymbol(id, 2)
+{
+}
+
+bool
+ViewResultSymbol::attachData(const Vector<Sort*>& opDeclaration,
+			     const char* purpose,
+			     const Vector<const char*>& data)
+{
+  if (strcmp(purpose, "ViewResultSymbol") == 0)
+    return true;
+  return ResultSymbol::attachData(opDeclaration, purpose, data);
+}
+
+void
+ViewResultSymbol::getDataAttachments(const Vector<Sort*>& opDeclaration,
+				     Vector<const char*>& purposes,
+				     Vector<Vector<const char*>>& data)
+{
+  purposes.push_back("ViewResultSymbol");
+  data.resize(data.size() + 1);
+  ResultSymbol::getDataAttachments(opDeclaration, purposes, data);
+}
+
+View*
+ViewResultSymbol::makeTransformedView(int newViewName,
+				      const Vector<ImportModule*>& inputModules,
+				      const Vector<int>& optionVec,
+				      const Vector<View*>& inputViews,
+				      Interpreter* owner,
+				      LineNumber lineNumber)
+{
+  DebugEnter("making view " << Token::name(newViewName));
+  ImportModule* ourModule = safeCastNonNull<ImportModule*>(getModule());
+  MetaLevel* metaLevel = getMetaLevel();
+  PointerMap qidMap;
+  DagNode* metaOptions = metaLevel->upQidList(optionVec, qidMap);
+  Symbol* transformOp = getTransformOp(metaOptions->symbol()->rangeComponent());
+  if (transformOp == nullptr)
+    return nullptr;
+
+  Verbose("Attempting to make transformed view " << Token::name(newViewName));
+  //
+  //	Make dag to be reduced.
+  //
+  DagNode* startDag = makeStartDag(inputModules, metaOptions, inputViews, qidMap);
+  DebugAdvisory("Start dag = " << startDag);
+  //
+  //	Reduce it using user's code.
+  //
+  ourModule->finishFlattening();
+  UserLevelRewritingContext context(startDag);
+  context.reduce();
+  if (UserLevelRewritingContext::aborted())
+    return nullptr;
+  DagNode* result = context.root();
+  DebugAdvisory("result dag = " << result);
+  //
+  //	Process result.
+  //
+  if (result->symbol() == this)
+    {
+      FreeDagNode* r = safeCastNonNull<FreeDagNode*>(result);
+      handleMessageList(r->getArgument(1), lineNumber);
+      //
+      //	Deal with view list.
+      //
+      DagNode* metaView = r->getArgument(0);
+      Symbol* topSymbol = metaView->symbol();
+      if (multipleViews(topSymbol))
+	{
+	  IssueWarning(*transformOp <<
+		       ": expected view transformer " << QUOTE(transformOp) <<
+		       " to return a single view.");
+	}
+      else if (noViews(topSymbol))
+	{
+	  //
+	  //	We assume view transformer will have returned an appropriate warning.
+	  //
+	  Verbose("Failed to make transformed view " << Token::name(newViewName));
+	}
+      else
+	{
+	  Verbose("Made transformed view " << Token::name(newViewName));
+	  if (View* resultView = metaLevel->downView(metaView, owner, newViewName))
+	    {
+	      //
+	      //	Our result module becomes a user of all the input modules and views
+	      //	and the transformer module. If any of these change, it becomes stale.
+	      //
+	      for (ImportModule* m : inputModules)
+		m->addUser(resultView);
+	      for (View* v : inputViews)
+		v->addUser(resultView);
+	      ourModule->addUser(resultView);
+	      DebugInfo(resultView << " is user of " << ourModule);
+	      //
+	      //	We pass it all the information used to construct it, so it
+	      //	can remove itself as a dependency if it becomes stale and
+	      //	calls deepSelfDestruct(). This also enables us to reconstruct
+	      //	the view expression that built it.
+	      //
+	      resultView->setTransformInfo(ourModule, inputModules, optionVec, inputViews);
+	      return resultView;
+	    }
+	  IssueWarning(*transformOp << ": view transformer " << QUOTE(transformOp) <<
+		       " returned bad view " << QUOTE(metaView) << ".");
+	}
+    }
+  else
+    IssueWarning(*transformOp << ": view transformer " << QUOTE(transformOp) <<
+		 " returned bad result term " << QUOTE(result) << ".");
+  return nullptr;
+}

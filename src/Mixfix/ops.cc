@@ -238,7 +238,8 @@ SyntacticPreModule::setMetadata(Token metaDataTok)
 	  const Type& anchor = isStrategy ? stratDecls[stratDecls.length() - 1].types[0]
 					  : opDefs[opDefs.length() - 1].types[0];
 
-	  IssueWarning(anchor.tokens[0].lineNumber() << ": multiple metadata attributes.");
+	  IssueWarning(LineNumber(anchor.tokens[0].lineNumber()) <<
+		       ": multiple metadata attributes.");
 	}
     }
   else
@@ -429,6 +430,28 @@ SyntacticPreModule::setLatexMacro(const string& latexMacro)
     {
       opDef.latexMacro = Token::encode(latexMacro.c_str());
       opDef.symbolType.setFlags(SymbolType::LATEX);
+    }
+}
+
+void
+SyntacticPreModule::setRpo(Token rpoTok)
+{
+  int rpo;
+  if (rpoTok.getInt(rpo))
+    {
+      OpDef& opDef = opDefs[opDefs.length() - 1];
+      if (opDef.symbolType.hasFlag(SymbolType::RPO))
+	IssueWarning(LINE_NUMBER << ": multiple rpo attributes.");
+      else
+	{
+	  opDef.rpo = rpo;
+	  opDef.symbolType.setFlags(SymbolType::RPO);
+	}
+    }
+  else
+    {
+      IssueWarning(LineNumber(rpoTok.lineNumber()) <<
+		   ": bad value " << QUOTE(rpoTok) << " for rpo attribute.");
     }
 }
 

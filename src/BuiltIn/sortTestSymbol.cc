@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -71,16 +71,17 @@ SortTestSymbol::SortTestSymbol(int id,
 }
 
 bool
-SortTestSymbol::eqRewrite(DagNode* subject, RewritingContext& context)
+SortTestSymbol::eqRewrite(Symbol* symbol, DagNode* subject, RewritingContext& context)
 {
-  Assert(this == subject->symbol(), "bad symbol");
-  DagNode *t = static_cast<FreeDagNode*>(subject)->getArgument(0);
-  if (eagerFlag)
+  Assert(symbol == subject->symbol(), "bad symbol");
+  SortTestSymbol* s = safeCastNonNull<SortTestSymbol*>(symbol);
+  DagNode* t = static_cast<FreeDagNode*>(subject)->getArgument(0);
+  if (s->eagerFlag)
     t->reduce(context);
   else
     t->computeTrueSort(context);
   t->symbol()->constrainToExactSort(t, context);  // HACK
-  FreeSymbol* result = (t->leq(cmpSort)) ? leqResult : notLeqResult;
+  FreeSymbol* result = t->leq(s->cmpSort) ? s->leqResult : s->notLeqResult;
   bool trace = RewritingContext::getTraceStatus();
   if (trace)
     {
@@ -95,6 +96,10 @@ SortTestSymbol::eqRewrite(DagNode* subject, RewritingContext& context)
   return true;
 }
 
+//
+//	User equations don't make sense so we neither accept nor compile them.
+//
+
 bool
 SortTestSymbol::acceptEquation(Equation* /* equation */)
 {
@@ -104,4 +109,5 @@ SortTestSymbol::acceptEquation(Equation* /* equation */)
 void
 SortTestSymbol::compileEquations()
 {
+  setEqRewrite(&SortTestSymbol::eqRewrite);
 }

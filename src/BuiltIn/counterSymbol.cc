@@ -82,13 +82,14 @@ CounterSymbol::resetRules()
   NumberOpSymbol::resetRules();
 }
 
-bool
-CounterSymbol::eqRewrite(DagNode* subject, RewritingContext& context)
+void
+CounterSymbol::compileEquations()
 {
   //
-  //	Jump straight to FreeSymbol as NumberOpSymbol doesn't know how to deal with this.
+  //	Needed to avoid calling NumberOpSymbol::compileEquations(), because
+  //	NumberOpSymbol::eqRewrite() doesn't understand us.
   //
-  return FreeSymbol::eqRewrite(subject, context);
+  FreeSymbol::compileEquations();
 }
 
 DagNode* 

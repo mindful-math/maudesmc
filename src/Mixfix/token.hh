@@ -67,6 +67,7 @@ public:
   //
   enum ProblemSituations
     {
+     NO_CONCERNS = 0,
      //
      //	Producing multiple tokens is a problem for ops/msgs declarations.
      //
@@ -137,6 +138,7 @@ public:
   static int encode(const char* tokenString);
   static int dotNameCode(int sortNameCode);
   static int quoteNameCode(int idCode);
+  static int addQuotes(int idCode);
   static int extractMixfix(int prefixNameCode, Vector<int>& mixfixSyntax);
   static bool specialChar(char c);
 
@@ -164,6 +166,7 @@ public:
   static int ropeToCode(const Rope& r);
   static int ropeToPrefixNameCode(const Rope& r);
   static int bubbleToPrefixNameCode(const Vector<Token>& opBubble);
+  static int bubbleToPrefixNameCode(const Vector<Token>& opBubble, Index start, Index beyondEnd);
   void getRational(mpz_class& numerator, mpz_class& denominator);
   static void printTokens(ostream& s,
 			  const Vector<Token>& tokens,
@@ -358,6 +361,12 @@ inline Rope
 Token::codeToRope(int code)
 {
   return stringToRope(stringTable.name(code));
+}
+
+inline int
+Token::bubbleToPrefixNameCode(const Vector<Token>& opBubble)
+{
+  return bubbleToPrefixNameCode(opBubble, 0, opBubble.size());
 }
 
 ostream& operator<<(ostream& s, const Token& token);

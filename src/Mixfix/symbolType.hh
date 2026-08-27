@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -88,6 +88,8 @@ public:
     TIME_MANAGER_SYMBOL,
     PRNG_MANAGER_SYMBOL,
     OBJECT_CONSTRUCTOR_SYMBOL,
+    MODULE_RESULT_SYMBOL,
+    VIEW_RESULT_SYMBOL,
 
     END_OF_SYMBOLS_WITH_ATTACHMENTS
   };
@@ -131,6 +133,7 @@ public:
     PCONST = 0x80000,
     POLY = 0x100000,
     DITTO = 0x200000,
+    RPO = 0x400000,
     //
     //	Conjunctions.
     //
@@ -144,7 +147,7 @@ public:
     //  All flagged attributes except ctor, poly, ditto. They need to agree between declarations of an operator.
     //
     ATTRIBUTES = PREC | GATHER | FORMAT | LATEX | STRAT | MEMO | FROZEN |
-    CONFIG | OBJECT | MESSAGE | AXIOMS | ITER | PCONST
+    CONFIG | OBJECT | MESSAGE | AXIOMS | ITER | PCONST | RPO
   };
 
   SymbolType();

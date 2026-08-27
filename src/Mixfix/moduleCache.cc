@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,7 +31,9 @@
 //      forward declarations
 #include "interface.hh"
 #include "core.hh"
+#include "AU_Theory.hh"
 #include "strategyLanguage.hh"
+#include "meta.hh"
 #include "mixfix.hh"
 
 //	front end class definitions
@@ -40,6 +42,7 @@
 #include "fileTable.hh"
 #include "parameter.hh"
 #include "moduleCache.hh"
+#include "moduleResultSymbol.hh"
 
 ModuleCache::ModuleCache()
 {
@@ -52,7 +55,11 @@ ModuleCache::~ModuleCache()
   //	modules they depend on are destructed - ahead of the deletion of the
   //	ModuleCache object. We check this in debug mode.
   //
+#ifndef NO_ASSERT
+  for (auto p : moduleMap)
+    cerr << Token::name(p.first) << " -> " << p.second << endl;
   Assert(moduleMap.empty(), "moduleMap not empty");
+#endif
 }
 
 void
@@ -62,7 +69,7 @@ ModuleCache::regretToInform(Entity* doomedEntity)
   ModuleMap::iterator pos = moduleMap.find(doomedModule->id());
   Assert(pos != moduleMap.end(), "couldn't find self-destructing module " << doomedModule);
   Assert(pos->second == doomedEntity, "found the wrong self-destructing module " << doomedModule);
-  DebugAdvisory("removing module " << doomedModule << " from cache");
+  DebugAdvisory("removing module " << doomedModule << " from ModuleCache");
   moduleMap.erase(pos);
 }
 
@@ -298,6 +305,86 @@ ModuleCache::makeSummation(const Vector<ImportModule*>& modules)
     }
   moduleMap[t] = sum;
   return sum;
+}
+
+ImportModule*
+ModuleCache::makeTransformedModule(ImportModule* transformer,
+				   const Vector<ImportModule*>& inputModules,
+				   const Vector<int>& options,
+				   const Vector<View*>& inputViews,
+				   Interpreter* owner,
+				   LineNumber lineNumber)
+{
+  ModuleResultSymbol* ts = transformer->getModuleResultSymbol();
+  if (ts == nullptr)
+    {
+      IssueWarning(*transformer << ": transformer module " << QUOTE(transformer) <<
+		   " does not have a symbol with the special TransformerResultSymbol attribute.");
+      return nullptr;
+    }
+  //
+  //	Make name.
+  //
+  Rope name;
+  
+  name += Token::name(transformer->id());
+  if (!inputModules.empty())
+    {
+      const char* sep = "[";
+      for (ImportModule* im : inputModules)
+	{
+	  name += sep;
+	  name += Token::name(im->id());
+	  sep = ", ";
+	}
+      name += "]";
+    }
+  if (inputModules.empty() || !options.empty())
+    {
+      name += "(";
+      const char* sep = "";
+      for (int a : options)
+	{
+	  name += sep;
+	  name += Token::name(a);
+	  sep = " ";
+	}
+      name += ")";
+    }
+  if (!inputViews.empty())
+    {
+      const char* sep = "[";
+      for (View* v : inputViews)
+	{
+	  name += sep;
+	  name += Token::name(v->id());
+	  sep = ", ";
+	}
+      name += "]";
+    }
+  //
+  //	Check if it is already in cache.
+  //
+  int nameCode = Token::ropeToCode(name);
+  ModuleMap::const_iterator c = moduleMap.find(nameCode);
+  if (c != moduleMap.end())
+    {
+      DebugAdvisory("using existing copy of module " << name);
+      return c->second;
+    }
+
+  ImportModule* resultModule = ts->makeTransformedModule(nameCode,
+							 inputModules,
+							 options,
+							 inputViews,
+							 owner,
+							 lineNumber);
+  if (resultModule != nullptr)
+    {
+      moduleMap[nameCode] = resultModule;
+      resultModule->addUser(this);
+    }
+  return resultModule;
 }
 
 int

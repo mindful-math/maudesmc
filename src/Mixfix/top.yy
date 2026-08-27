@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -109,10 +109,12 @@ Int64 number;
 Int64 number2;
 int variantOptions;
 
+
 static void yyerror(UserLevelRewritingContext::ParseResult* parseResult, const char *s);
 
 void cleanUpModuleExpression();
 void cleanUpParser();
+void deepSelfDestructModuleExpressionVector(Vector<ModuleExpression*>* moduleExpressions);
 void deepSelfDestructViewExpressionVector(Vector<ViewExpression*>* viewExpressions);
 void missingSpace(const Token& token);
 %}
@@ -130,12 +132,17 @@ void missingSpace(const Token& token);
   Interpreter::PrintFlags yyPrintFlags;
   Interpreter::SearchKind yySearchKind;
   ModuleExpression* yyModuleExpression;
+  Vector<ModuleExpression*>* yyModuleExpressionVector;
   ViewExpression* yyViewExpression;
   Vector<ViewExpression*>* yyViewExpressionVector;
+  Vector<int>* yyIntVector;
 }
 
 %destructor { $$->deepSelfDestruct(); } <yyModuleExpression> <yyViewExpression>
+%destructor { deepSelfDestructModuleExpressionVector($$); } <yyModuleExpressionVector>
 %destructor { deepSelfDestructViewExpressionVector($$); } <yyViewExpressionVector>
+%destructor { delete $$; } <yyIntVector>
+
 %{
 int yylex(YYSTYPE* lvalp);
 %}
@@ -144,7 +151,7 @@ int yylex(YYSTYPE* lvalp);
 /*
  *	Inert keywords: these are only recognized by lexer when in initial mode.
  */
-%token <yyToken> KW_MOD KW_VIEW
+%token <yyToken> KW_MOD KW_MAKE KW_VIEW
 %token KW_PARSE KW_NORMALIZE KW_REDUCE KW_REWRITE KW_OO
 %token KW_LOOP KW_NARROW KW_XG_NARROW KW_MATCH KW_XMATCH KW_UNIFY KW_CHECK
 %token KW_GET KW_VARIANTS KW_VARIANT
@@ -196,7 +203,7 @@ int yylex(YYSTYPE* lvalp);
 %token <yyToken> KW_ASSOC KW_COMM KW_ID KW_IDEM KW_ITER KW_PCONST
 %token <yyToken> KW_LEFT KW_RIGHT KW_PREC KW_GATHER KW_METADATA KW_STRAT KW_ASTRAT KW_POLY
 %token <yyToken> KW_MEMO KW_FROZEN KW_CTOR KW_LATEX KW_SPECIAL KW_CONFIG KW_OBJ KW_MSG KW_PORTAL
-%token <yyToken> KW_DITTO KW_FORMAT
+%token <yyToken> KW_DITTO KW_FORMAT KW_RPO
 %token <yyToken> KW_ID_HOOK KW_OP_HOOK KW_TERM_HOOK
 
 /*
@@ -265,16 +272,24 @@ int yylex(YYSTYPE* lvalp);
 /*
  *	Nonterminals that return ModuleExpression*.
  */
-%type <yyModuleExpression> moduleExprDot moduleExpr moduleExpr2 moduleExpr3
-%type <yyModuleExpression> renameExpr instantExpr parenExpr
+%type <yyModuleExpression> moduleExprDot moduleExpr moduleExpr2 moduleExpr3 moduleExpr4
+%type <yyModuleExpression> renameExpr instantExpr parenExpr transformExpr
 /*
  *	Nonterminals that return ViewExpression*.
  */
 %type <yyViewExpression> viewExpr
 /*
+ *	Nonterminals that return Vector<ModuleExpression*>*.
+ */
+%type <yyModuleExpressionVector> moduleExprList transInput
+/*
  *	Nonterminals that return Vector<ViewExpression*>*.
  */
-%type <yyViewExpressionVector> instantArgs
+%type <yyViewExpressionVector> instantArgs optInputViews
+/*
+ *	Nonterminals that return Vector<int>*.
+ */
+%type <yyIntVector> optTransOptions transOptions
 
 %start top
 

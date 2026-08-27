@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -66,16 +66,28 @@ ModuleExpression::ModuleExpression(ModuleExpression* left, ModuleExpression* rig
 }
 
 ModuleExpression::ModuleExpression(ModuleExpression* module, Renaming* renaming)
- : type(RENAMING),
-   module(module),
-   renaming(renaming)
+  : type(RENAMING),
+    module(module),
+    renaming(renaming)
 {
 }
 
 ModuleExpression::ModuleExpression(ModuleExpression* module, const Vector<ViewExpression*>& arguments)
- : type(INSTANTIATION),
-   module(module),
-   arguments(arguments)
+  : type(INSTANTIATION),
+    module(module),
+    arguments(arguments)
+{
+}
+
+ModuleExpression::ModuleExpression(Token moduleName,
+				   const Vector<ModuleExpression*>& inputModules,
+				   const Vector<int>& options,
+				   const Vector<ViewExpression*>& inputViews)
+  : type(TRANSFORMATION),
+    moduleName(moduleName),
+    inputModules(inputModules),
+    options(options),
+    arguments(inputViews)
 {
 }
 
@@ -84,6 +96,12 @@ ModuleExpression::deepSelfDestruct()
 {
   switch (type)
     {
+    case SUMMATION:
+      {
+	for (ModuleExpression* m : modules)
+	  m->deepSelfDestruct();
+	break;
+      }
     case RENAMING:
       {
 	module->deepSelfDestruct();
@@ -97,9 +115,9 @@ ModuleExpression::deepSelfDestruct()
 	  v->deepSelfDestruct();
 	break;
       }
-    case SUMMATION:
+    case TRANSFORMATION:
       {
-	for (ModuleExpression* m : modules)
+	for (ModuleExpression* m : inputModules)
 	  m->deepSelfDestruct();
 	break;
       }
@@ -161,6 +179,57 @@ operator<<(ostream& s, const ModuleExpression* expr)
 	s << '}';
 	break;
       }
+    case ModuleExpression::TRANSFORMATION:
+      {
+	const Vector<ModuleExpression*>& inputModules = expr->getInputModules();
+	const Vector<int>& options = expr->getOptions();
+	const Vector<ViewExpression*>& inputViews = expr->getArguments();
+	//
+	//	Transformer specification.
+	//
+	s << expr->getModuleName();
+	//
+	//	Input modules.
+	//
+	if (!inputModules.empty())
+	  {
+	    const char* sep = "[";
+	    for (ModuleExpression* m :  inputModules)
+	      {
+		s << sep << m;
+		sep = ", ";
+	      }
+	    s << ']';
+	  }
+	//
+	//	Options.
+	//
+	if (!options.empty() || inputModules.empty())
+	  {
+	    s << '(';
+	    const char* sep = "";
+	    for (int a : options)
+	      {
+		s << sep << Token::name(a);
+		sep = " ";
+	      }
+	    s << ')';
+	  }
+	//
+	//	Input views.
+	//
+	if (!inputViews.empty())
+	  {
+	    const char* sep = "[";
+	    for (ViewExpression* ve : inputViews)
+	      {
+		s << sep << ve;
+		sep = ", ";
+	      }
+	    s << ']';
+	  }
+	break;
+      }
     default:
       CantHappen("not implemented");
     }
@@ -207,7 +276,7 @@ ModuleExpression::latexPrint(ostream& s, const Module* enclosingModule) const
 	  s << "\\maudeLeftParen";
 	module->latexPrint(s, enclosingModule);
 	if (parensNeeded)
-	    s << "\\maudeRightParen";
+	  s << "\\maudeRightParen";
 	s << "\\maudeLeftBrace";
 	const char* sep = "";
 	for (const ViewExpression* ve : arguments)
@@ -217,6 +286,57 @@ ModuleExpression::latexPrint(ostream& s, const Module* enclosingModule) const
 	    ve->latexPrint(s, enclosingModule);
 	  }
 	s << "\\maudeRightBrace";
+	break;
+      }
+    case TRANSFORMATION:
+      {
+	//
+	//	Transformer specification.
+	//
+	s << "\\maudeModule{" << Token::latexName(moduleName.code()) << "}";
+	//
+	//	Input modules.
+	//
+	if (!inputModules.empty())
+	  {
+	    const char* sep = "\\maudeLeftBracket ";
+	    for (ModuleExpression* m : inputModules)
+	      {
+		s << sep;
+		m->latexPrint(s, enclosingModule);
+		sep = "\\maudeComma ";
+	      }
+	    s << "\\maudeRightBracket";
+	  }
+	//
+	//	Options.
+	//
+	if (!options.empty() || inputModules.empty())
+	  {
+	    s << "\\maudeLeftParen";
+	    const char* sep = "";
+	    for (int a : options)
+	      {
+		s << sep << "\\maudeQid{" << Token::latexName(a) << "}";
+		sep = "\\maudeSpace";
+	      }
+	    s << "\\maudeRightParen";
+	  }
+	//
+	//	Input views.
+	//
+	const Vector<ViewExpression*>& inputViews = getArguments();
+	if (!inputViews.empty())
+	  {
+	    const char* sep = "\\maudeLeftBracket ";
+	    for (ViewExpression* ve : inputViews)
+	      {
+		s << sep;
+		ve->latexPrint(s, enclosingModule);
+		sep = "\\maudeComma ";
+	      }
+	    s << "\\maudeRightBracket";
+	  }
 	break;
       }
     default:

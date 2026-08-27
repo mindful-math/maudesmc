@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2006 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,22 @@
 class SharedTokens
 {
 public:
+  enum SkipType
+    {
+      SORT_NAME,
+      STRUCTURE
+    };
+
   SharedTokens();
+  //
+  //	Helper functions for otf variable declarations.
+  //
+  
+  static Index skip(SkipType type, const Vector<Token>& tokens, Index start, Index beyondEnd);
+  static Index skipKindName(const Vector<Token>& tokens,
+			    Index start,
+			    Index beyondEnd,
+			    Vector<int>& sortNames);
 
 protected:
 #define MACRO(Name, String) \

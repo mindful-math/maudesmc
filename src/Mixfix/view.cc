@@ -72,14 +72,21 @@ View::View(Token viewName, Interpreter* owner)
   : Argument(viewName.code()),
     LineNumber(viewName.lineNumber()),
     owner(owner),
-    baseView(0),  // marks this as an original
+    baseView(nullptr),  // marks this as an original
     cleanName(viewName.code())
 {
-  fromTheory = 0;
-  toModule = 0;
-  fromExpr = 0;
-  toExpr = 0;
-  status = INITIAL;
+}
+
+//
+//	Version for metaview/transformed view.
+//
+View::View(Token viewName, int cleanName, Interpreter* owner)
+  : Argument(viewName.code()),
+    LineNumber(viewName.lineNumber()),
+    owner(owner),
+    baseView(nullptr),  // marks this as an original
+    cleanName(cleanName)
+{
 }
 
 //
@@ -97,11 +104,6 @@ View::View(int viewName,
     savedArguments(arguments),
     cleanName(cleanName)
 {
-  fromTheory = 0;
-  toModule = 0;
-  fromExpr = 0;
-  toExpr = 0;
-  status = INITIAL;
   //
   //	We're a user of our baseView, and need to self-destruct if
   //	it goes away.
@@ -126,13 +128,14 @@ View::View(int viewName,
 
 View::~View()
 {
+  DebugInfo(this << " deleted");
   clearOpTermMap();
   clearStratExprMap();
   //
-  //	Remove ourselves as users of our baseView, fromTheory and toModule and
+  //	Remove ourselves as users of our baseView, fromTheory, toModule and transformModule and
   //	deepSelfDestruct() from/to expressions.
   //
-  if (baseView != 0)
+  if (baseView != nullptr)
     {
       //
       //	We're an instantiation of a view; need to deal with our
@@ -145,13 +148,22 @@ View::~View()
 	}
       baseView->removeUser(this);
     }
-  if (fromTheory != 0)
+  if (fromTheory != nullptr)
     fromTheory->removeUser(this);
-  if (toModule != 0)
+  if (toModule != nullptr)
     toModule->removeUser(this);
-  if (fromExpr != 0)
+  if (transformModule != nullptr)
+    transformModule->removeUser(this);
+  for (ImportModule* m : inputModules)
+    m->removeUser(this);
+  for (View* v : inputViews)
+    v->removeUser(this);
+  //
+  //	deepSelfDestruct() from/to expressions.
+  //
+  if (fromExpr != nullptr)
     fromExpr->deepSelfDestruct();
-  if (toExpr != 0)
+  if (toExpr != nullptr)
     toExpr->deepSelfDestruct();
   //
   //	Remove ourselves as users of our parameter theories and
@@ -159,9 +171,9 @@ View::~View()
   //
   for (ParameterDecl& pd : parameters)
     {
-      if (pd.theory != 0)
+      if (pd.theory != nullptr)
 	pd.theory->removeUser(this);
-      if (pd.expr != 0)
+      if (pd.expr != nullptr)
 	pd.expr->deepSelfDestruct();
     }
   //
@@ -263,10 +275,11 @@ View::clearStratExprMap()
 void
 View::regretToInform(Entity* doomedEntity)
 {
+  DebugInfo(this << " informed that " << doomedEntity << " is going away");
   //
   //	Something we depend on disappeared.
   //
-  if (baseView != 0)
+  if (baseView != nullptr)
     {
       //
       //	We're an instantiation that is generated from a module expression
@@ -276,12 +289,35 @@ View::regretToInform(Entity* doomedEntity)
       delete this;
       return;
     }
+  if (doomedEntity == transformModule)
+    {
+      //
+      //	We're a transformed view and our transformer just disappeared
+      //	so we just self-destruct.
+      //
+      DebugAdvisory("transformed view " << this << " self-destructs");
+      delete this;
+      return;
+    }
+  for (ImportModule* m : inputModules)
+    {
+      if (doomedEntity == m)
+	{
+	  //
+	  //	We're a transformed view and one of our input modules just disappeared
+	  //	so we just self-destruct.
+	  //
+	  DebugAdvisory("transform view " << this << " self-destructs");
+	  delete this;
+	  return;
+	}
+    }
   //
   //	We're an original syntactic or meta-syntactic view.
   //
   if (doomedEntity == fromTheory)
     fromTheory = 0;
-  else if(doomedEntity == toModule)
+  else if (doomedEntity == toModule)
     toModule = 0;
   else
     {
@@ -793,7 +829,16 @@ View::evaluate()
     {
     case INITIAL:
       {
-	if (!Token::isValidViewName(id()))
+	//
+	//	If we're a transformed view then the true name, id() will look
+	//	something like VT[...](...)[...] and the clean name will have been
+	//	checked by downView() and will look completely different.
+	//	In this case, we don't require that either be a valid user
+	//	entered view name, since we will need to generate clean names
+	//	names that look like instantiated view names to keep sort names
+	//	consistent.
+	//
+	if (id() == cleanName && !Token::isValidViewName(id()))
 	  {
 	    IssueWarning(*this << ": " << QUOTE(this) << " is not a valid view name.");
 	    status = BAD;
@@ -1166,6 +1211,64 @@ View::latexViewExpression(bool parameterBrackets) const
       result += "\\maudeRightBrace";
       return result;
     }
+  if (transformModule != nullptr)
+    {
+      //
+      //	We're a transformed view.
+      //
+      string result("\\maudeModule{");
+      result += Token::latexName(transformModule->id());
+      result += "}";
+      //
+      //	Input modules.
+      //
+      if (!inputModules.empty())
+	{
+	  const char* sep = "\\maudeLeftBracket ";
+	  for (const ImportModule* m : inputModules)
+	    {
+	      result += sep;
+	      result += m->latexModuleExpression(parameterBrackets);
+	      sep = "\\maudeComma ";
+	    }
+	  result += "\\maudeRightBracket";
+	}
+      //
+      //	Options.
+      //
+      if (!transformOptions.empty() || inputModules.empty())
+	{
+	  result += "\\maudeLeftParen";
+	  const char* sep = "";
+	  for (int a : transformOptions)
+	    {
+	      result += sep;
+	      result += "\\maudeQid{";
+	      result += Token::latexName(a);
+	      result += "}";
+	      sep = "\\maudeSpace";
+	    }
+	  result +=  "\\maudeRightParen";
+	}
+      //
+      //	Input views.
+      //
+      if (!inputViews.empty())
+	{
+	  const char* sep = "\\maudeLeftBracket ";
+	  for (const View* v : inputViews)
+	    {
+	      result += sep;
+	      result += v->latexViewExpression(parameterBrackets);
+	      sep = "\\maudeComma ";
+	      }
+	  result += "\\maudeRightBracket";
+	}
+      return result;
+    }
+  //
+  //	Regular view.
+  //
   string result = "\\maudeView{";
   result += Token::latexName(id());
   result += "}";
@@ -1205,5 +1308,11 @@ View::printViewExpression(ostream& s, bool parameterBrackets) const
       s << '}';
     }
   else
-    s << Token::name(id());
+    {
+      //
+      //	ViewCache name is OK in the transformation case because we can't
+      //	have parameter brackets.
+      //
+      s << Token::name(id());
+    }
 }

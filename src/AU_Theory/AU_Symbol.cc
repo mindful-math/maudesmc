@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2024 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -93,6 +93,9 @@ AU_Symbol::compileEquations()
   AssociativeSymbol::compileEquations();
   if (!equationFree())
     useDequeFlag = false;
+  setEqRewrite(standardStrategy() ?
+	       (equationFree() ? &eqRewriteCtor : &eqRewriteStandardStrategy) :
+	       &eqRewriteComplexStrategy);
 }
 
 DagNode*
@@ -142,61 +145,71 @@ AU_Symbol::rewriteAtTopNoOwise(AU_DagNode* subject, RewritingContext& context)
 }
 
 bool
-AU_Symbol::eqRewrite(DagNode* subject, RewritingContext& context)
+AU_Symbol::eqRewriteCtor(Symbol* symbol, DagNode* subject, RewritingContext& context)
 {
-  Assert(this == subject->symbol(), "bad symbol");
-  if (standardStrategy())
+  Assert(symbol == subject->symbol(), "bad symbol");
+  //
+  //	We normally expect to be called because we have a fresh node.
+  //	Nodes produced by assignment will normally have their reduced flag set
+  //	and we won't be called. But there are exceptions, if the assignment
+  //	was produce by matching below a lazy symbol, or if the matcher couldn't
+  //	compute the correct sort for the node because of membership axioms.
+  //
+  if (static_cast<AU_BaseDagNode*>(subject)->isFresh())
     {
-      if (safeCast(AU_BaseDagNode*, subject)->isDeque())
-	{
-	  Assert(equationFree(), "deque with equations");
-	  return false;
-	}
-      else
-	{
-	  AU_DagNode* s = safeCast(AU_DagNode*, subject);
-	  if (s->isFresh())
-	    {
-	      //
-	      //	Not safe to use iterator because reduce() can
-	      //	call garbage collector which can relocate argArray.
-	      //
-	      int nrArgs = s->argArray.length();
-	      for (int i = 0; i < nrArgs; i++)
-		s->argArray[i]->reduce(context);
-	      //
-	      //	We always need to renormalize at the top because
-	      //	shared subterms may have rewritten.
-	      //
-	      if (s->normalizeAtTop() <= AU_DagNode::DEQUED)
-		return false;  // COLLAPSED or DEQUED
-	    }
-	  //
-	  //	Even we were created by an assignment we could
-	  //	be equation-free and not reduced because our true
-	  //	sort was not known because of a membership axiom.
-	  //
-	  if (equationFree())
-	    return false;
-
-#ifndef NO_ASSERT
-	  //
-	  //	Look for Riesco 1/18/10 bug.
-	  //
-	  for (int i = 0; i < s->argArray.length(); i++)
-	    {
-	      DagNode* d = s->argArray[i];
-	      Assert(d->getSortIndex() != Sort::SORT_UNKNOWN,
-		     "AU_Symbol::eqRewrite(): unknown sort for AU argument " << d <<
-		     " at index " << i << " in subject " << subject <<
-		     " s->getNormalizationStatus() = " << s->getNormalizationStatus());
-	    }
-#endif
-
-	  return rewriteAtTop(s, context);
-	}
+      AU_DagNode* d = static_cast<AU_DagNode*>(subject);
+      //
+      //	Not safe to use iterator because reduce() can
+      //	call garbage collector which can relocate argArray.
+      //
+      Index nrArgs = d->argArray.size();
+      for (Index i = 0; i < nrArgs; ++i)
+	d->argArray[i]->reduce(context);
+      //
+      //	We always need to renormalize at the top because
+      //	shared subterms may have rewritten.
+      //
+      (void) d->normalizeAtTop();
     }
-  return complexStrategy(safeCast(AU_DagNode*, subject), context);
+  return false;
+}
+
+bool
+AU_Symbol::eqRewriteStandardStrategy(Symbol* symbol, DagNode* subject, RewritingContext& context)
+{
+  Assert(symbol == subject->symbol(), "bad symbol");
+  Assert(!static_cast<AU_BaseDagNode*>(subject)->isDeque(), "deque with equations");
+
+  AU_DagNode* d = static_cast<AU_DagNode*>(subject);
+  if (d->isFresh())
+    {
+      //
+      //	Not safe to use iterator because reduce() can
+      //	call garbage collector which can relocate argArray.
+      //
+      Index nrArgs = d->argArray.size();
+      for (Index i = 0; i < nrArgs; ++i)
+	d->argArray[i]->reduce(context);
+      //
+      //	We always need to renormalize at the top because
+      //	shared subterms may have rewritten.
+      //
+      if (d->normalizeAtTop() <= AU_DagNode::DEQUED)
+	return false;  // COLLAPSED (can't be DEQUED because we have equations)
+    }
+  //
+  //	Even if the node was produced by an assignment, we might need to rewrite
+  //	if matching took place below a lazy symbol.
+  //
+  return safeCastNonNull<AU_Symbol*>(symbol)->rewriteAtTop(d, context);
+}
+
+bool
+AU_Symbol::eqRewriteComplexStrategy(Symbol* symbol, DagNode* subject, RewritingContext& context)
+{
+  Assert(symbol == subject->symbol(), "bad symbol");
+  AU_Symbol* s = safeCastNonNull<AU_Symbol*>(symbol);
+  return s->complexStrategy(safeCast(AU_DagNode*, subject), context);
 }
 
 bool

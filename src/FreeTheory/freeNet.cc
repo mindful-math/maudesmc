@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -71,7 +71,9 @@
 
 FreeNet::FreeNet()
 {
-  fast = true;  // until we know otherwise
+  speed = FreeRemainder::SUPER_FAST;  // until we know otherwise
+  alienOrLowArity = true;  // assume all tested symbols are alien or low arity
+  maxNrRemainders = 0;
 }
 
 FreeNet::~FreeNet()
@@ -85,7 +87,8 @@ int
 FreeNet::allocateNode(int nrMatchArcs)
 {
   //
-  //	We will need a real node for each exiting arc from the virtual node that is labeled with a symbol. 
+  //	We will need a real node for each exiting arc from the virtual node that is labeled
+  //	with a symbol. 
   //
   int len = net.length();
   net.resize(len + nrMatchArcs);
@@ -105,8 +108,15 @@ FreeNet::fillOutNode(int nodeNr,
   Vector<Triple> triples(nrSymbols);
   for (int i = 0; i < nrSymbols; i++)
     {
+      Symbol* s = symbols[i];
+      if (alienOrLowArity)
+	{
+	  FreeSymbol* fs = dynamic_cast<FreeSymbol*>(s);
+	  if (fs && !(fs->lowArity()))
+	    alienOrLowArity = false;
+	}
       Assert(symbols[i] != 0, "null symbol");
-      triples[i].symbol = symbols[i];
+      triples[i].symbol = s;
       triples[i].slot = slots[i];
       triples[i].subtree = targets[i];
     }
@@ -152,21 +162,11 @@ FreeNet::buildRemainders(const Vector<Equation*>& equations,
   for (int i : patternsUsed)
     {
       Equation* e = equations[i];
-      if (FreeTerm* f = dynamic_cast<FreeTerm*>(e->getLhs()))
-	{
-	  FreeRemainder* r = f->compileRemainder(e, slotTranslation);
-	  remainders[i] = r;
-	  //
-	  //	If a remainder doesn't have fast handling, neither can the discrimination net.
-	  //
-	  if (!(r->fastHandling()))
-	    fast = false;
-	}
-      else
-	{
-	  remainders[i] = new FreeRemainder(e);  // remainder for "foreign" equation
-	  fast = false;  // a foreign equation always disables fast handling for the net
-	}
+      FreeTerm* f = dynamic_cast<FreeTerm*>(e->getLhs());
+      FreeRemainder* r = f ? f->compileRemainder(e, slotTranslation) :
+	new FreeRemainder(e);  // remainder for "foreign" equation
+      speed = FreeRemainder::lowest(speed, r->getSpeed());
+      remainders[i] = r;
     }
   //
   //	Build null terminated pointer version of applicable for added speed.
@@ -176,8 +176,11 @@ FreeNet::buildRemainders(const Vector<Equation*>& equations,
   for (int i = 0; i < nrApplicables; i++)
     {
       PatternSet& liveSet = applicable[i];
+      int nrRemainders = liveSet.size();
+      if (nrRemainders > maxNrRemainders)
+	maxNrRemainders = nrRemainders;
       Vector<FreeRemainder*>& rems = fastApplicable[i];
-      rems.resize(liveSet.size() + 1);
+      rems.resize(nrRemainders + 1);
       Vector<FreeRemainder*>::iterator r = rems.begin();
       for (int j : liveSet)
 	*r++ = remainders[j];
@@ -185,7 +188,7 @@ FreeNet::buildRemainders(const Vector<Equation*>& equations,
     }
 }
 
-local_inline bool
+inline bool
 FreeNet::tripleLt(const Triple& p1, const Triple& p2)
 {
   return p1.symbol->getIndexWithinModule() < p2.symbol->getIndexWithinModule();
@@ -246,16 +249,18 @@ FreeNet::moreImportant(Symbol* first, Symbol* second)
   //
   //	Heuristic to decide which symbol is more important and thus
   //	should have the fastest matching.
-  //	The current heuristic favors free symbols over non-free symbols and
-  //	high arity symbols over low arity symbols.
+  //	The current heuristic favors stable non-free symbols over free symbols
+  //	and high arity symbols over low arity symbols.
+  //	The idea is we want to optimize the induction case at the expense of
+  //	basis case.
   //
   //	Returns true if first symbol is considered more important.
   //
   FreeSymbol* f = dynamic_cast<FreeSymbol*>(first);
   FreeSymbol* s = dynamic_cast<FreeSymbol*>(second);
-  if (f != 0 && s == 0)
-    return true;
   if (f == 0 && s != 0)
+    return true;
+  if (f != 0 && s == 0)
     return false;
   return first->arity() > second->arity();
 }

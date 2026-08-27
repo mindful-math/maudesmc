@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 2019-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 2019-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,28 +36,55 @@
 //	front end class definitions
 #include "token.hh"
 #include "renaming.hh"
-#include "viewExpression.hh"
 #include "importModule.hh"
+#include "moduleExpression.hh"
+#include "viewExpression.hh"
 
 ViewExpression::ViewExpression(Token name)
- : name(name)
+  : type(SIMPLE_NAME),
+    name(name)
 {
 }
 
 ViewExpression::ViewExpression(ViewExpression* view, const Vector<ViewExpression*>& arguments)
- : view(view),
-   arguments(arguments)
+  : type(INSTANTIATION),
+    view(view),
+    arguments(arguments)
+{
+}
+
+ViewExpression::ViewExpression(Token name,
+			       const Vector<ModuleExpression*>& inputModules,
+			       const Vector<int>& options,
+			       const Vector<ViewExpression*>& inputViews)
+  : type(TRANSFORMATION),
+    name(name),
+    inputModules(inputModules),
+    options(options),
+    arguments(inputViews)
 {
 }
 
 void
 ViewExpression::deepSelfDestruct()
 {
-  if (isInstantiation())
+  switch (type)
     {
-      view->deepSelfDestruct();
-      for (ViewExpression* v : arguments)
-	v->deepSelfDestruct();
+    case INSTANTIATION:
+      {
+	view->deepSelfDestruct();
+	for (ViewExpression* v : arguments)
+	  v->deepSelfDestruct();
+	break;
+      }
+    case TRANSFORMATION:
+      {
+	for (ModuleExpression* m : inputModules)
+	  m->deepSelfDestruct();
+	break;
+      }
+    case SIMPLE_NAME:
+      break;  // nothing to delete - avoid compiler warning
     }
   delete this;
 }
@@ -65,53 +92,168 @@ ViewExpression::deepSelfDestruct()
 ostream&
 operator<<(ostream& s, const ViewExpression* expr)
 {
-  if (expr->isInstantiation())
+  switch (expr->getType())
     {
-      s << expr->getView() << '{';
-      const Vector<ViewExpression*>& arguments = expr->getArguments();
-      const Vector<ViewExpression*>::const_iterator e = arguments.end();
-      for (Vector<ViewExpression*>::const_iterator i = arguments.begin();;)
-	{
-	  s << *i;
-	  ++i;
-	  if (i == e)
-	    break;
-	  s  << ", ";
-	}
-      s << '}';
+    case ViewExpression::SIMPLE_NAME:
+      {
+	s << expr->getName();
+	break;
+      }
+    case ViewExpression::INSTANTIATION:
+      {
+	s << expr->getView() << '{';
+	const Vector<ViewExpression*>& arguments = expr->getArguments();
+	const Vector<ViewExpression*>::const_iterator e = arguments.end();
+	for (Vector<ViewExpression*>::const_iterator i = arguments.begin();;)
+	  {
+	    s << *i;
+	    ++i;
+	    if (i == e)
+	      break;
+	    s  << ", ";
+	  }
+	s << '}';
+	break;
+      }
+    case ViewExpression::TRANSFORMATION:
+      {
+	const Vector<ModuleExpression*>& inputModules = expr->getInputModules();
+	const Vector<int>& options = expr->getOptions();
+	const Vector<ViewExpression*>& inputViews = expr->getArguments();
+	//
+	//	Transformer specification.
+	//
+	s << expr->getName();
+	//
+	//	Input modules.
+	//
+	if (!inputModules.empty())
+	  {
+	    const char* sep = "[";
+	    for (ModuleExpression* m :  inputModules)
+	      {
+		s << sep << m;
+		sep = ", ";
+	      }
+	    s << ']';
+	  }
+	//
+	//	Options.
+	//
+	if (!options.empty() || inputModules.empty())
+	  {
+	    s << '(';
+	    const char* sep = "";
+	    for (int v : options)
+	      {
+		s << sep << Token::name(v);
+		sep = " ";
+	      }
+	    s << ')';
+	  }
+	//
+	//	Input views.
+	//
+	if (!inputViews.empty())
+	  {
+	    const char* sep = "[";
+	    for (ViewExpression* ve : inputViews)
+	      {
+		s << sep << ve;
+		sep = ", ";
+	      }
+	    s << ']';
+	  }
+	break;
+      }
     }
-  else
-    s << expr->getName();
   return s;
 }
 
 void
 ViewExpression::latexPrint(ostream& s, const Module* enclosingModule) const
 {
-  if (isInstantiation())
+    switch (type)
     {
-      view->latexPrint(s,  enclosingModule);
-      s << "\\maudeLeftBrace";
-      const char* sep = "";
-      for (const ViewExpression* ve : arguments)
-	{
-	  s << sep;
-	  sep = "\\maudeComma";
-	  ve->latexPrint(s, enclosingModule);
-	}
-      s << "\\maudeRightBrace";
-    }
-  else
-    {
-      //
-      //	If we don't have an enclosing module, a name cannot be a parameter.
-      //
-      int code = name.code();
-      if (enclosingModule == nullptr || (safeCastNonNull<const ImportModule*>(enclosingModule)->findParameterIndex(code) == NONE))
-	s << "\\maudeView{";
-      else
-	s << "\\maudeParameter{";
-      s << Token::latexName(code);
-      s << "}";
+    case ViewExpression::SIMPLE_NAME:
+      {
+	//
+	//	If we don't have an enclosing module, a name cannot be a parameter.
+	//
+	int code = name.code();
+	if (enclosingModule == nullptr ||
+	    (safeCastNonNull<const ImportModule*>(enclosingModule)->findParameterIndex(code) == NONE))
+	  s << "\\maudeView{";
+	else
+	  s << "\\maudeParameter{";
+	s << Token::latexName(code);
+	s << "}";
+	break;
+      }
+    case ViewExpression::INSTANTIATION:
+      {
+	view->latexPrint(s,  enclosingModule);
+	s << "\\maudeLeftBrace";
+	const char* sep = "";
+	for (const ViewExpression* ve : arguments)
+	  {
+	    s << sep;
+	    sep = "\\maudeComma";
+	    ve->latexPrint(s, enclosingModule);
+	  }
+	s << "\\maudeRightBrace";
+	break;
+      }
+    case ViewExpression::TRANSFORMATION:
+      {
+	//
+	//	Transformer specification.
+	//
+	s << "\\maudeModule{" << Token::latexName(name.code()) << "}";
+	//
+	//	Input modules.
+	//
+	if (!inputModules.empty())
+	  {
+	    const char* sep = "\\maudeLeftBracket ";
+	    for (ModuleExpression* m : inputModules)
+	      {
+		s << sep;
+		m->latexPrint(s, enclosingModule);
+		sep = "\\maudeComma ";
+	      }
+	    s << "\\maudeRightBracket";
+	  }
+	//
+	//	Options.
+	//
+	if (!options.empty() || inputModules.empty())
+	  {
+	    s << "\\maudeLeftParen";
+	    const char* sep = "";
+	    for (int v : options)
+	      {
+		s << sep << "\\maudeQid{" << Token::latexName(v) << "}";
+		sep = "\\maudeSpace";
+	      }
+	    s << "\\maudeRightParen";
+	  }
+	//
+	//	Input views.
+	//
+	const Vector<ViewExpression*>& inputViews = getArguments();
+	if (!inputViews.empty())
+	  {
+	    const char* sep = "\\maudeLeftBracket ";
+	    for (ViewExpression* ve : inputViews)
+	      {
+		s << sep;
+		ve->latexPrint(s, enclosingModule);
+		sep = "\\maudeComma ";
+	      }
+	    s << "\\maudeRightBracket";
+	  }
+	break;
+      }
     }
 }

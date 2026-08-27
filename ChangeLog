@@ -1,3 +1,56 @@
+2026-08-19  Saruman the White  <eker@eker10>
+
+	* tests/Transformer/badModuleAdd.maude: TransformResult ->
+	ModuleResult
+
+	* tests/Transformer/badViewAdd.maude: TransformResult ->
+	ModuleResult
+
+	* tests/Transformer/dropEquations.maude: TransformResult ->
+	ModuleResult
+
+	* tests/Transformer/tuple.maude: VIEW-GENERATOR -> TRANSFORMER
+
+2026-08-16  Saruman the White  <eker@eker10>
+
+	* tests/Transformer/tuple.maude: use new transformSymbol syntax
+
+2026-08-03  Saruman the White  <eker@eker10>
+
+	* tests/Corner/otfVariables.maude: added more examples
+	set show timing off .
+
+2026-07-27  Saruman the White  <eker@eker10>
+
+	* tests/Transformer/defaultView.maude: use view generator from
+	prelude; added more cases
+
+==================================Maude165===========================================
+
+2026-07-21  Saruman the White  <eker@eker10>
+
+	* tests/Transformer/tuple.maude: use predefined TUPLE module;
+	added tests for POWER
+
+2026-07-14  Saruman the White  <eker@eker10>
+
+	* tests/Transformer/tuple.maude: added
+
+2026-04-21  Saruman the White  <eker@eker10>
+
+	* tests/Misc/makeStatement.maude: added
+
+2025-12-19  Saruman the White  <eker@eker10>
+
+	* tests/Misc/attributeConsistency.maude: added
+
+2025-09-26  Rubén Rubio  <rubenrub@ucm.es>
+
+	* configure.ac: added CVC5 and --with-smt instead of separate
+	--with-yices2, --with-cvc4, etc.
+
+	* tests/Misc/smtTest.maude: added CVC5
+
 ==================================Maude164===========================================
 
 2025-07-11  Rubén Rubio  <rubenrub@ucm.es>

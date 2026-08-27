@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 2019-2022 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 2019-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -31,14 +31,17 @@
 //      forward declarations
 #include "interface.hh"
 #include "core.hh"
+#include "AU_Theory.hh"
 #include "strategyLanguage.hh"
+#include "meta.hh"
 #include "mixfix.hh"
 
 //	front end class definitions
+#include "fileTable.hh"
 #include "renaming.hh"
 #include "view.hh"
+#include "viewResultSymbol.hh"
 #include "viewCache.hh"
-#include "fileTable.hh"
 
 ViewCache::ViewCache()
 {
@@ -52,7 +55,11 @@ ViewCache::~ViewCache()
   //	removed when the modules are destructed, ahead of the
   //	destruction of the ViewCache object.
   //
+#ifndef NO_ASSERT
+  for (auto& p : viewMap)
+    cerr << Token::name(p.first) << " -> " << p.second << endl;
   Assert(viewMap.empty(), "viewMap not empty");
+#endif
 }
 
 void
@@ -61,7 +68,7 @@ ViewCache::regretToInform(Entity* doomedEntity)
   View* doomedView = safeCastNonNull<View*>(doomedEntity);
   ViewMap::iterator pos = viewMap.find(doomedView->id());
   Assert(pos != viewMap.end(), "could find self-destructing view " << doomedView);
-  DebugAdvisory("removing view " << doomedView << " from cache");
+  DebugAdvisory("removing view " << doomedView << " from ViewCache");
   viewMap.erase(pos);
 }
 
@@ -158,6 +165,85 @@ ViewCache::makeViewInstantiation(View* view, const Vector<Argument*>& arguments)
     }
   viewMap[nameCode] = copy;
   return copy;
+}
+
+View*
+ViewCache::makeTransformedView(ImportModule* transformer,
+			       const Vector<ImportModule*>& inputModules,
+			       const Vector<int>& options,
+			       const Vector<View*>& inputViews,
+			       Interpreter* owner,
+			       LineNumber lineNumber)
+{
+  ViewResultSymbol* vs = transformer->getViewResultSymbol();
+  if (vs == nullptr)
+    {
+      IssueWarning(*transformer << ": view transformer module " << QUOTE(transformer) <<
+		   " does not have a symbol with the ViewResultSymbol special attribute.");
+      return nullptr;
+    }
+  //
+  //	Make name.
+  //
+  Rope name;
+  
+  name += Token::name(transformer->id());
+  if (!inputModules.empty())
+    {
+      const char* sep = "[";
+      for (ImportModule* im : inputModules)
+	{
+	  name += sep;
+	  name += Token::name(im->id());
+	  sep = ", ";
+	}
+      name += "]";
+    }
+  if (inputModules.empty() || !options.empty())
+    {
+      name += "(";
+      const char* sep = "";
+      for (int v : options)
+	{
+	  name += sep;
+	  name += Token::name(v);
+	  sep = " ";
+	}
+      name += ")";
+    }
+  if (!inputViews.empty())
+    {
+      const char* sep = "[";
+      for (View* v : inputViews)
+	{
+	  name += sep;
+	  name += Token::name(v->id());
+	  sep = ", ";
+	}
+      name += "]";
+    }
+  //
+  //	Now check if a view having our name is already in cache.
+  //
+  int nameCode = Token::ropeToCode(name);
+  ViewMap::const_iterator c = viewMap.find(nameCode);
+  if (c != viewMap.end())
+    {
+      DebugAdvisory("using existing copy of view " << name);
+      return c->second;
+    }
+  View* resultView = vs->makeTransformedView(nameCode,
+					     inputModules,
+					     options,
+					     inputViews,
+					     owner,
+					     lineNumber);
+  if (resultView != nullptr)
+    {
+      viewMap[nameCode] = resultView;
+      resultView->addUser(this);
+    }
+  return resultView;
 }
 
 int

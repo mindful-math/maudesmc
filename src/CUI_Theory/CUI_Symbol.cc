@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2024 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -67,6 +67,7 @@ CUI_Symbol::CUI_Symbol(int id,
     setPermuteStrategy(strategy);
   else
     setStrategy(strategy, 2, memoFlag);
+  setEqRewrite(standardStrategy() ? &eqRewriteStandardStrategy : &eqRewriteComplexStrategy);
 }
 
 void 
@@ -112,77 +113,79 @@ CUI_Symbol::makeDagNode(const Vector<DagNode*>& args)
 }
 
 bool
-CUI_Symbol::eqRewrite(DagNode* subject, RewritingContext& context)
+CUI_Symbol::eqRewriteStandardStrategy(Symbol* symbol, DagNode* subject, RewritingContext& context)
 {
-  Assert(this == subject->symbol(), "bad symbol");
-  CUI_DagNode* s = static_cast<CUI_DagNode*>(subject);
-  DagNode** args = s->argArray;
-  if (standardStrategy())
+  Assert(symbol == subject->symbol(), "bad symbol");
+  CUI_DagNode* d = static_cast<CUI_DagNode*>(subject);
+  d->argArray[0]->reduce(context);
+  d->argArray[1]->reduce(context);
+  if (d->normalizeAtTop())
+    return false;
+  CUI_Symbol* s = safeCastNonNull<CUI_Symbol*>(symbol);
+  return !(s->equationFree()) && s->applyReplace(d, context);
+}
+
+bool
+CUI_Symbol::eqRewriteComplexStrategy(Symbol* symbol, DagNode* subject, RewritingContext& context)
+{
+  Assert(symbol == subject->symbol(), "bad symbol");
+  CUI_DagNode* d = static_cast<CUI_DagNode*>(subject);
+  CUI_Symbol* s = safeCastNonNull<CUI_Symbol*>(symbol);
+  if (s->isMemoized())
     {
-      args[0]->reduce(context);
-      args[1]->reduce(context);
-      if (s->normalizeAtTop())
-	return false;
-      return !(equationFree()) && applyReplace(s, context);
+      MemoTable::SourceSet from;
+      bool result = s->memoStrategy(from, subject, context);
+      s->memoEnter(from, subject);
+      //
+      //	We may need to return true in the case we collapse to a unreduced subterm.
+      //
+      return result;
     }
-  else
+  //
+  //	Execute user supplied strategy.
+  //
+  const Vector<int>& userStrategy = s->getStrategy();
+  int stratLen = userStrategy.length();
+  bool seenZero = false;
+  for (int i = 0; i < stratLen; i++)
     {
-      if (isMemoized())
+      int a = userStrategy[i];
+      if(a == 0)
 	{
-	  MemoTable::SourceSet from;
-	  bool result = memoStrategy(from, subject, context);
-	  memoEnter(from, subject);
+	  if (!seenZero)
+	    {
+	      d->argArray[0]->computeTrueSort(context);
+	      d->argArray[0]->computeTrueSort(context);
+	      seenZero = true;
+	    }
 	  //
-	  //	We may need to return true in the case we collapse to a unreduced subterm.
+	  //	If we collapse to one of our subterms which has not been
+	  //	reduced we pretend that we did a rewrite so that the
+	  //	reduction process continues.
 	  //
-	  return result;
+	  if (d->normalizeAtTop())
+	    return !(d->isReduced());
+	  if ((i + 1 == stratLen) ? s->applyReplace(d, context) :
+	      s->applyReplaceNoOwise(d, context))
+	    return true;
 	}
-      //
-      //	Execute user supplied strategy.
-      //
-      const Vector<int>& userStrategy = getStrategy();
-      int stratLen = userStrategy.length();
-      bool seenZero = false;
-      for (int i = 0; i < stratLen; i++)
-        {
-          int a = userStrategy[i];
-          if(a == 0)
-            {
-              if (!seenZero)
-                {
-		  args[0]->computeTrueSort(context);
-		  args[1]->computeTrueSort(context);
-		  seenZero = true;
-		}
+      else
+	{
+	  --a;  // real arguments start at 0 not 1
+	  if (seenZero)
+	    {
+	      d->argArray[a] = d->argArray[a]->copyReducible();
 	      //
-	      //	If we collapse to one of our subterms which has not been
-	      //	reduced we pretend that we did a rewrite so that the
-	      //	reduction process continues.
+	      //    A previous call to applyReplace() may have
+	      //    computed a true sort for our subject which will be
+	      //    invalidated by the reduce we are about to do.
 	      //
-	      if (s->normalizeAtTop())
-		return !(s->isReduced());
-              if ((i + 1 == stratLen) ? applyReplace(s, context) :
-		  applyReplaceNoOwise(s, context))
-                return true;
-            }
-          else
-            {
-              --a;  // real arguments start at 0 not 1
-              if (seenZero)
-                {
-                  args[a] = args[a]->copyReducible();
-                  //
-                  //    A previous call to applyReplace() may have
-                  //    computed a true sort for our subject which will be
-                  //    invalidated by the reduce we are about to do.
-                  //
-                  s->repudiateSortInfo();
-                }
-              args[a]->reduce(context);
-            }
-        }
-      return false;
+	      d->repudiateSortInfo();
+	    }
+	  d->argArray[a]->reduce(context);
+	}
     }
+  return false;
 }
 
 bool

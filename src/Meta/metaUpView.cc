@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2021 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,14 +21,16 @@
 */
 
 DagNode*
-MetaLevel::upView(View* view, PointerMap& qidMap)
+MetaLevel::upView(View* view, PointerMap& qidMap, int replacementName)
 {
   Vector<DagNode*> args(6);
 
   view->evaluate();  // in case it became stale
-  args[0] = upHeader(view, qidMap);
-  args[1] = upModuleExpression(view->getFrom(), qidMap);
-  args[2] = upModuleExpression(view->getTo(), qidMap);
+  args[0] = upHeader(view, qidMap, (replacementName == NONE) ? view->id() : replacementName);
+  args[1] = upModuleExpression(view->getFromTheory(), qidMap);
+  args[2] = upModuleExpression(view->getToModule(), qidMap);
+  //  args[1] = upModuleExpression(view->getFrom(), qidMap);
+  //  args[2] = upModuleExpression(view->getTo(), qidMap);
   args[3] = upSortMappings(view, qidMap);
   args[4] = upOpMappings(view, qidMap);
   args[5] = upStratMappings(view, qidMap);
@@ -36,9 +38,9 @@ MetaLevel::upView(View* view, PointerMap& qidMap)
 }
 
 DagNode*
-MetaLevel::upHeader(View* view, PointerMap& qidMap)
+MetaLevel::upHeader(View* view, PointerMap& qidMap, int replacementName)
 {
-  DagNode* name = upQid(view->id(), qidMap);
+  DagNode* name = upQid(replacementName, qidMap);
   if (view->getNrParameters() == 0)
     return name;
   Vector<DagNode*> args(2);
@@ -64,7 +66,8 @@ MetaLevel::upParameterDecl(View* view, int index, PointerMap& qidMap)
 {
   Vector<DagNode*> args(2);
   args[0] = upQid(view->getParameterName(index), qidMap);
-  args[1] = upModuleExpression(view->getParameterTheoryExpression(index), qidMap);
+  args[1] = upModuleExpression(view->getParameterTheory(index), qidMap);
+  //args[1] = upModuleExpression(view->getParameterTheoryExpression(index), qidMap);
   return parameterDeclSymbol->makeDagNode(args);
 }
 

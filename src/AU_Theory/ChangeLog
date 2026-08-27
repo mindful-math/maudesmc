@@ -1,3 +1,30 @@
+2026-04-06  Saruman the White  <eker@eker10>
+
+	* AU_Symbol.cc (AU_Symbol::eqRewriteStandardStrategy): simplified
+
+	* AU_Symbol.hh (class AU_Symbol): added decl for eqRewriteCtor()
+
+	* AU_Symbol.cc (AU_Symbol::eqRewriteCtor): added
+	(AU_Symbol::AU_Symbol): don't call setEqRewrite()
+	(AU_Symbol::compileEquations): call setEqRewrite() here
+
+2026-03-06  Saruman the White  <eker@eker10>
+
+	* AU_Symbol.hh (class AU_Symbol): deleted decl for eqRewrite()
+
+	* AU_Symbol.cc (AU_Symbol::eqRewriteStandardStrategy): fix
+	Assert()
+	(AU_Symbol::eqRewrite): deleted
+
+2025-01-20  Saruman the White  <eker@eker10>
+
+	* AU_Symbol.hh (class AU_Symbol): added decls for
+	eqRewriteStandardStrategy(), eqRewriteComplexStrategy()
+
+	* AU_Symbol.cc (AU_Symbol::AU_Symbol): call setEqRewrite()
+	(AU_Symbol::eqRewriteStandardStrategy): added
+	(AU_Symbol::eqRewriteComplexStrategy): added
+
 2024-03-05  Steven Eker  <eker@pup>
 
 	* AU_Term.cc (AU_Term::arguments): made const

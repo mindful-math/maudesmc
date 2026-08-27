@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -76,9 +76,9 @@
 #include "instantiateModuleWithBoundParameters.cc"
 #include "latexImportModule.cc"
 
-ImportModule::ImportModule(int name, ModuleType moduleType)
+ImportModule::ImportModule(int name, ModuleType moduleType, Origin origin)
   : MixfixModule(name, moduleType),
-    origin(TEXT)
+    origin(origin)
 {
   //
   //	This version is for modules created as subclass VisibleModule, either from
@@ -151,6 +151,18 @@ ImportModule::importModeString(ImportMode mode)
 }
 
 void
+ImportModule::deleteParameters()
+{
+  //
+  //	For recovering from an error in a clean way.
+  //
+  for (ImportModule* m : parameterTheories)
+    m->removeUser(this);
+  parameterNames.clear();
+  parameterTheories.clear();
+}
+
+void
 ImportModule::addImport(ImportModule* importedModule,
 			ImportMode mode,
 			LineNumber lineNumber)
@@ -163,7 +175,21 @@ ImportModule::addImport(ImportModule* importedModule,
 		   " importation mode. Recovering by treating mode as including.");
       mode = INCLUDING;
     }
-  if (!canImport(getModuleType(), t))
+  MixfixModule::ModuleType type = getModuleType();
+  if (type == MixfixModule::MAKE_STATEMENT)
+    {
+      if (isTheory(t) && !parameterNames.empty())
+	{
+	  IssueWarning(lineNumber << ": cannot make a parameterized theory " <<
+		       QUOTE(this) << ". Recovering by deleting parameters.");
+	  deleteParameters();
+	}
+      //
+      //	We transform the make statement into a module of type it imports.
+      //
+      setModuleType(t);
+    }
+  else if (!canImport(type, t))
     {
       //
       //	Allowing modules to import theories would allow inconsistancies
@@ -174,7 +200,7 @@ ImportModule::addImport(ImportModule* importedModule,
 		   QUOTE(moduleTypeString(t)) << " " <<
 		   QUOTE(importedModule) << " by " <<
 		   QUOTE(moduleTypeString(getModuleType())) << " " <<
-		   QUOTE(this) << " not allowed.  Recovering by ignoring import.");
+		   QUOTE(this) << " not allowed. Recovering by ignoring import.");
       return;
     }
   if (!parameterNames.empty())
@@ -314,8 +340,9 @@ ImportModule::checkForPolymorphOperatorClash()
 }
 
 void
-ImportModule::regretToInform(Entity* /* doomedEntity */)
+ImportModule::regretToInform(Entity*  doomedEntity )
 {
+  DebugInfo(this << " informed that " << doomedEntity << " is going away and will self destruct");
   //
   //	Something that we depend on is about to disappear - so we must self destruct.
   //
@@ -326,14 +353,25 @@ void
 ImportModule::deepSelfDestruct()
 {
   //
-  //	First remove ourself from the list of users of each of our imports, parameters,
-  // 	view arguments and base module. This is so we will not receive a regretToInform()
-  //	message after we delete ourself.
+  //	We do this stuff here rather than our destructor because we
+  //	might want to postpone our destruction, but we still need to clean up.
+  //
+  DebugEnter("module " << this);
+  //
+  //	First remove ourself from the list of users of each of our parameters, imports,
+  //	other used modules, view arguments and base module.
+  //	This is so we will not receive a regretToInform() message after we delete ourself.
   //
   for (ImportModule* m : parameterTheories)
     m->removeUser(this);
   for (ImportModule* m : importedModules)
     m->removeUser(this);
+  for (ImportModule* m : inputModules)
+    m->removeUser(this);
+  for (View* v : inputViews)
+    v->removeUser(this);
+  if (transformModule != nullptr)
+    transformModule->removeUser(this);
   for (Argument* arg : savedArguments)
     {
       if (View* v = dynamic_cast<View*>(arg))
@@ -538,9 +576,10 @@ ImportModule::importStrategies()
   //
   //	We first fo through our parameter theories and ask them
   //	to donate their strategies.
+  //
   for (ImportModule* m : parameterTheories)
     m->donateStrategies(this);
-   //
+  //
   //	We just imported the operators from our last parameter theory,
   //	so we record the number of strategies we got from parameters.
   //
@@ -925,6 +964,40 @@ ImportModule::resetImportPhase()
 }
 
 void
+ImportModule::finishFlattening()
+{
+  //
+  //	This is intended to be called on modules which have had their
+  //	signatures flattened, but have not had their statements flattened
+  //	and compiled.
+  //
+  //	It could be the module has never been rewritten in or maybe the
+  //	module was created for a module expression so there is no PreModule
+  //	to do this work.
+  //
+  if (getStatus() < Module::THEORY_CLOSED)
+    {
+      Assert(getStatus() == FIX_UPS_CLOSED, "fix ups not closed for " << this);
+      //
+      //	Need to flatten in statements and compile.
+      //
+      importStatements();
+      Assert(!isBad(), "importStatements() unexpectedly set bad flag in " << this);
+      resetImports();
+      //
+      //	Compile  module.
+      //
+      closeTheory();
+      //
+      //	We don't allow reserved fresh variable names in variant
+      //	equations or narrowing rules. We can't do this until statements
+      //	have been compiled since it relied on VariableInfo being filled out.
+      //
+      checkFreshVariableNames();
+    }
+}
+
+void
 ImportModule::printModuleExpression(ostream& s, bool parameterBrackets) const
 {
   //
@@ -933,6 +1006,7 @@ ImportModule::printModuleExpression(ostream& s, bool parameterBrackets) const
   switch (origin)
     {
     case TEXT:
+    case TRANSFORMATION:  // ModuleCache name is OK because we can't have parameter brackets
       {
 	s << Token::name(id());
 	break;

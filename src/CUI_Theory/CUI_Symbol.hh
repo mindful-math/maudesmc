@@ -50,7 +50,6 @@ public:
   DagNode* makeDagNode(const Vector<DagNode*>& args);
   void computeBaseSort(DagNode* subject);
   void normalizeAndComputeTrueSort(DagNode* subject, RewritingContext& context);
-  bool eqRewrite(DagNode* subject, RewritingContext& context);  
   void stackArguments(DagNode* subject,
 		      Vector<RedexPosition>& stack,
 		      int parentIndex,
@@ -93,8 +92,16 @@ public:
   bool rightId() const;
   bool idem() const;
 
+protected:
+  //
+  //	This is provided for derived classes to call from their own EqRewriter functions.
+  //
+  bool normalizeAndTryEquations(DagNode* subject, RewritingContext& context);
+
 private:
   bool memoStrategy(MemoTable::SourceSet& from, DagNode* subject, RewritingContext& context);
+  static bool eqRewriteStandardStrategy(Symbol* symbol, DagNode* subject, RewritingContext& context);
+  static bool eqRewriteComplexStrategy(Symbol* symbol, DagNode* subject, RewritingContext& context);
 
   Axioms axioms;
 };
@@ -121,6 +128,23 @@ inline bool
 CUI_Symbol::idem() const
 {
   return axioms & IDEM;
+}
+
+#include "CUI_DagNode.hh"
+
+inline bool
+CUI_Symbol::normalizeAndTryEquations(DagNode* subject, RewritingContext& context)
+{
+  //
+  //	We assume caller has already reduced the arguments, and failed to
+  //	execute some special semantics. This a backstop that just normalizes
+  //	and tries the user's equations.
+  //
+  Assert(this == subject->symbol(), "bad symbol");
+  CUI_DagNode* d = static_cast<CUI_DagNode*>(subject);
+  if (d->normalizeAtTop())
+    return false;
+  return !equationFree() && applyReplace(d, context);
 }
 
 #endif

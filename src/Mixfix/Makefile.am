@@ -80,6 +80,9 @@ libmixfix_a_SOURCES = \
 	variableGenerator.cc \
 	objectConstructorSymbol.cc \
 	maudeLatexBuffer.cc \
+	resultSymbol.cc \
+	moduleResultSymbol.cc \
+	viewResultSymbol.cc \
 	$(COMPILER_SRC)
 
 EXTRA_libmixfix_a_SOURCES = \
@@ -178,6 +181,7 @@ EXTRA_DIST = \
 	getVariants.cc \
 	smtSearch.cc \
 	cvc4_Bindings.cc \
+	cvc5_Bindings.cc \
 	yices2_Bindings.cc \
 	quotedIdentifierOpSignature.cc \
 	serialize.cc \
@@ -193,7 +197,8 @@ EXTRA_DIST = \
 	latexStrategyPrint.cc \
 	latexResult.cc \
 	latexCommand.cc \
-	latexPreModulePrint.cc
+	latexPreModulePrint.cc \
+	resultSignature.cc
 
 noinst_HEADERS = \
 	renaming.hh \
@@ -239,6 +244,7 @@ noinst_HEADERS = \
 	variableGenerator.hh \
 	cacheableRewritingContext.hh \
 	cvc4_Bindings.hh \
+	cvc5_Bindings.hh \
 	yices2_Bindings.hh \
 	enclosingObject.hh \
 	argument.hh \
@@ -247,4 +253,7 @@ noinst_HEADERS = \
 	objectConstructorSymbol.hh \
 	statementTransformer.hh \
 	maudeLatexBuffer.hh \
-	printSettings.hh
+	printSettings.hh \
+	resultSymbol.hh \
+	moduleResultSymbol.hh \
+	viewResultSymbol.hh

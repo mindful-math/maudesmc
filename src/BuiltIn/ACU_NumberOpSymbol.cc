@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2020 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -126,13 +126,21 @@ ACU_NumberOpSymbol::getSymbolAttachments(Vector<const char*>& purposes,
   ACU_Symbol::getSymbolAttachments(purposes, symbols);
 }
 
-bool
-ACU_NumberOpSymbol::eqRewrite(DagNode* subject, RewritingContext& context)
+void
+ACU_NumberOpSymbol::compileEquations()
 {
-  Assert(this == subject->symbol(), "bad symbol");
-  if (reduceArgumentsAndNormalize(subject, context))
+  ACU_Symbol::compileEquations();
+  setEqRewrite(&ACU_NumberOpSymbol::eqRewrite);
+}
+
+bool
+ACU_NumberOpSymbol::eqRewrite(Symbol* symbol, DagNode* subject, RewritingContext& context)
+{
+  Assert(symbol == subject->symbol(), "bad symbol");
+  ACU_NumberOpSymbol* s = safeCastNonNull<ACU_NumberOpSymbol*>(symbol);
+  if (s->reduceArgumentsAndNormalize(subject, context))
     return false;  // collapsed under us
-  return eqRewrite2(subject, context);  // keep our stack frame small
+  return s->eqRewrite2(subject, context);  // keep our stack frame small
 }
 
 bool
@@ -271,5 +279,5 @@ ACU_NumberOpSymbol::eqRewrite2(DagNode* subject, RewritingContext& context)
 					makeDagNode(dagNodes, multiplicities));
 	}
     }
-  return ACU_Symbol::eqRewrite(subject, context);
+  return tryEquations(subject, context);
 }

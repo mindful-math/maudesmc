@@ -41,7 +41,11 @@ TESTS = \
 	pconst4 \
 	parameterizedConstant \
 	pconst5 \
-	initialEqualityPredicate
+	initialEqualityPredicate \
+	rpo \
+	attributeConsistency \
+	makeCommand \
+	printAttributeSelect
 
 MAUDE_FILES = \
 	directoryTest.maude \
@@ -86,7 +90,11 @@ MAUDE_FILES = \
 	pconst4.maude \
 	parameterizedConstant.maude \
 	pconst5.maude \
-	initialEqualityPredicate.maude
+	initialEqualityPredicate.maude \
+	rpo.maude \
+	attributeConsistency.maude \
+	makeCommand.maude \
+	printAttributeSelect.maude
 
 RESULT_FILES = \
 	directoryTest.expected \
@@ -131,6 +139,10 @@ RESULT_FILES = \
 	pconst4.expected \
 	parameterizedConstant.expected \
 	pconst5.expected \
-	initialEqualityPredicate.expected
+	initialEqualityPredicate.expected \
+	rpo.expected \
+	attributeConsistency.expected \
+	makeCommand.expected \
+	printAttributeSelect.expected
 
 EXTRA_DIST = $(TESTS) $(MAUDE_FILES) $(RESULT_FILES)

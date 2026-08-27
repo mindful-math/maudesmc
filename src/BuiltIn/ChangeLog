@@ -1,3 +1,213 @@
+2026-03-26  Saruman the White  <eker@eker10>
+
+	* sortTestSymbol.hh (class SortTestSymbol): deleted decl for 2 arg
+	version of eqRewrite()
+
+	* sortTestSymbol.cc (SortTestSymbol::eqRewrite): deleted 2 arg
+	version
+
+	* equalitySymbol.hh (class EqualitySymbol): eqRewrite() ->
+	eqRewriteFast(); added decl for eqRewriteSlow()
+
+	* equalitySymbol.cc (EqualitySymbol::eqRewriteSlow): added
+	(EqualitySymbol::eqRewrite): becomes eqRewriteFast()
+	(EqualitySymbol::compileEquations): select eqRewriteFast() or
+	eqRewriteSlow()
+
+	* equalitySymbol.hh (class EqualitySymbol): deleted decl for 2 arg
+	eqRewrite()
+
+	* equalitySymbol.cc (EqualitySymbol::eqRewrite): fuse both
+	versions
+
+	* branchSymbol.hh (class BranchSymbol): deleted decl for 2 arg
+	eqRewrite()
+
+	* branchSymbol.cc (BranchSymbol::eqRewrite): deleted 2 arg version
+
+2026-03-06  Saruman the White  <eker@eker10>
+
+	* CUI_NumberOpSymbol.hh (class CUI_NumberOpSymbol): deleted decl
+	for 2 arg version of eqRewrite()
+
+	* CUI_NumberOpSymbol.cc (CUI_NumberOpSymbol::eqRewrite): deleted 2
+	arg version
+
+	* numberOpSymbol.hh (class NumberOpSymbol): deleted dec for 2 arg
+	version of eqRewrite()
+
+	* numberOpSymbol.cc (NumberOpSymbol::eqRewrite): merge 2 arg
+	version into 3 arg version
+
+	* ACU_NumberOpSymbol.hh (class ACU_NumberOpSymbol): deleted decl
+	for 2 arg version of eqRewrite()
+
+	* ACU_NumberOpSymbol.cc (ACU_NumberOpSymbol::eqRewrite): deleted 2
+	arg version
+
+2026-02-15  Saruman the White  <eker@eker10>
+
+	* branchSymbol.cc (BranchSymbol::eqRewrite): call tryEquations()
+	instead of FreeSymbol::eqRewrite()
+
+	* matrixOpSymbol.cc (MatrixOpSymbol::eqRewrite): fix bug where we
+	were calling FreeSymbol::eqRewrite()
+
+	* counterSymbol.cc (CounterSymbol::compileEquations): expanded on
+	comment
+
+	* counterSymbol.hh (class CounterSymbol): deleted decl for
+	eqRewrite()
+
+	* counterSymbol.cc (CounterSymbol::eqRewrite): deleted
+
+2026-02-10  Saruman the White  <eker@eker10>
+
+	* matrixOpSymbol.hh (class MatrixOpSymbol): added decls for
+	compileEquations() and static 3 arg eqRewrite(); made many
+	overloaded member functions protected
+
+	* matrixOpSymbol.cc (MatrixOpSymbol::compileEquations): added
+	(MatrixOpSymbol::eqRewrite): added static 3 arg version
+	(MatrixOpSymbol::eqRewrite): use tryEquations() rather than
+	FreeSymbol::eqRewrite() as a backstop
+
+2026-01-30  Saruman the White  <eker@eker10>
+
+	* stringOpSymbol.hh (class StringOpSymbol):  added decls for
+	compileEquations() and static 3 arg eqRewrite(); make some public
+	functions protected
+
+	* stringOpSymbol.cc (StringOpSymbol::eqRewrite): use
+	tryEquations() instead of FreeSymbol::eqRewrite()
+	(StringOpSymbol::eqRewrite): added static 3 arg version
+	(StringOpSymbol::compileEquations): added
+
+	* floatOpSymbol.hh (class FloatOpSymbol): added decls for
+	compileEquations() and static 3 arg eqRewrite(); make some public
+	functions protected
+
+	* floatOpSymbol.cc (FloatOpSymbol::compileEquations): added
+	(FloatOpSymbol::eqRewrite): added static 3 arg version
+	(FloatOpSymbol::eqRewrite): use tryEquations() instead of
+	FreeSymbol::eqRewrite()
+
+	* divisionSymbol.cc (DivisionSymbol::eqRewrite): reduce newly
+	created subterms now that we're using tryEquations()
+
+	* randomOpSymbol.hh (class RandomOpSymbol): added decls for static
+	3 arg eqRewrite() and compileEquations(); made some public
+	functions protected
+
+	* randomOpSymbol.cc (RandomOpSymbol::eqRewrite): call
+	tryEquations() rather than FreeSymbol::eqRewrite()
+	(RandomOpSymbol::compileEquations): added
+	(RandomOpSymbol::eqRewrite): added static 3 arg version
+
+	* counterSymbol.hh (class CounterSymbol): added decl for
+	compileEquations()
+
+	* counterSymbol.cc (CounterSymbol::compileEquations): added
+
+	* counterSymbol.hh (class CounterSymbol): made some previously
+	public functions protected
+
+	* counterSymbol.cc (CounterSymbol::eqRewrite): added comment to
+	explain its purpose
+
+	* divisionSymbol.hh (class DivisionSymbol): added decls for
+	compileEquations() and static 3 arg eqRewrite(); made some
+	previously public functions protected
+
+	* divisionSymbol.cc (DivisionSymbol::eqRewrite): added static 3
+	arg version
+	(DivisionSymbol::compileEquations): added
+	(DivisionSymbol::eqRewrite): call tryEquations() rather than
+	FreeSymbol::eqRewrite()
+
+	* equalitySymbol.cc: move comment
+
+	* sortTestSymbol.hh (class SortTestSymbol): added decl for static
+	3 arg eqRewrite(); made many overloaded virtual functions private;
+	made final
+
+	* branchSymbol.hh (class BranchSymbol): added decls for
+	compileEquations() and static 3 arg eqRewrite(); move many
+	overloaded virtual functions from public to protected
+
+	* sortTestSymbol.cc (SortTestSymbol::compileEquations): added
+	(SortTestSymbol::eqRewrite): added static 3 arg version
+
+	* branchSymbol.cc (BranchSymbol::eqRewrite): added static 3
+	arg version
+	(BranchSymbol::compileEquations): added
+
+2026-01-29  Saruman the White  <eker@eker10>
+
+	* minusSymbol.hh (class MinusSymbol): make final; add comment
+	(class MinusSymbol): made data attachment functions private
+
+	* equalitySymbol.hh (class EqualitySymbol): made final
+
+	* equalitySymbol.cc (EqualitySymbol::compileEquations): call
+	setEqRewrite()
+
+	* CUI_NumberOpSymbol.hh (class CUI_NumberOpSymbol): make many
+	overloaded virtual functions protected rather the private to allow
+	for derived classes
+
+	* ACU_NumberOpSymbol.hh (class ACU_NumberOpSymbol): make many
+	overloaded virtual functions protected rather the private to allow
+	for derived classes
+
+	* numberOpSymbol.hh (class NumberOpSymbol): made many overloaded
+	virtual functions protected since its reasonable for derived
+	classes to call them
+
+	* equalitySymbol.hh (class EqualitySymbol): added decl for static
+	3 arg eqRewrite(); made many overloaded virtual functions private
+
+	* equalitySymbol.cc (EqualitySymbol::eqRewrite): added static 3
+	arg version
+
+	* numberOpSymbol.hh (class NumberOpSymbol): made overloaded
+	virtual functions private - they should never be called except
+	though the public theory interface
+
+	* CUI_NumberOpSymbol.hh (class CUI_NumberOpSymbol): made
+	overloaded virtual functions private - they should never be called
+	except though the public theory interface
+
+	* ACU_NumberOpSymbol.hh (class ACU_NumberOpSymbol): made
+	overloaded virtual functions private - they should never be called
+	except though the public theory interface
+
+	* numberOpSymbol.hh (class NumberOpSymbol): added decls for
+	compileEquations() and static 3 arg eqRewrite()
+
+	* numberOpSymbol.cc (NumberOpSymbol::eqRewrite): use
+	tryEquations() instead of FreeSymbol::eqRewrite()
+	(NumberOpSymbol::eqRewrite): added static 3 arg version
+	(NumberOpSymbol::compileEquations): added
+
+2026-01-27  Saruman the White  <eker@eker10>
+
+	* ACU_NumberOpSymbol.hh (class ACU_NumberOpSymbol): added decls
+	for compileEquations() and static 3 arg eqRewrite()
+
+	* CUI_NumberOpSymbol.hh (class CUI_NumberOpSymbol): added decls
+	for compileEquations() and static 3 arg eqRewrite()
+
+	* CUI_NumberOpSymbol.cc (CUI_NumberOpSymbol::eqRewrite): added 3
+	arg version
+	(CUI_NumberOpSymbol::compileEquations): added
+
+	* ACU_NumberOpSymbol.cc (ACU_NumberOpSymbol::compileEquations):
+	added
+	(ACU_NumberOpSymbol::eqRewrite): added static 3 arg version
+	(ACU_NumberOpSymbol::eqRewrite2): use tryEquations() as the
+	backstop rather than ACU_Symbol::eqRewrite()
+
 2024-06-07  Steven M. Eker  <eker@eker10>
 
 	* stringOpSymbol.cc (StringOpSymbol::ropeToNumber): allow leading

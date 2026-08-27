@@ -30,6 +30,8 @@
 
 #ifdef USE_CVC4
 #include "cvc4_Bindings.hh"
+#elif defined(USE_CVC5)
+#include "cvc5_Bindings.hh"
 #elif defined(USE_YICES2) 
 #include "yices2_Bindings.hh"
 #else

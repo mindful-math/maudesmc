@@ -61,6 +61,7 @@ public:
   typedef multimap<int, StratExprInfo> StratExprMap;
 
   View(Token viewName, Interpreter* owner);
+  View(Token viewName, int cleanName, Interpreter* owner);
   View(int viewName,
        int cleanName,
        View* baseView,
@@ -72,6 +73,16 @@ public:
   void addFrom(ModuleExpression* expr);
   void addTo(ModuleExpression* expr);
   void finishView();
+
+  void setTransformInfo(ImportModule* transModule,
+			const Vector<ImportModule*>& inModules,
+			const Vector<int>& transOptions,
+			const Vector<View*>& inViews);
+  ImportModule* getTransformModule() const;
+  const Vector<ImportModule*>& getInputModules() const;
+  const Vector<int>& getTransformOptions() const;
+  const Vector<View*>& getInputViews() const;
+
   bool evaluate();
   bool isComplete();
   int getNrParameters() const;
@@ -128,6 +139,9 @@ public:
 
   void printViewExpression(ostream& s, bool parameterBrackets) const;
   string latexViewExpression(bool parameterBrackets = false) const;
+
+  const View* getBaseView() const;
+  const Vector<Argument*>& getArguments() const;
 
 protected:
   void regretToInform(Entity* doomedEntity);
@@ -238,13 +252,21 @@ private:
   //	An instantiation can have a clean name that is different from its true name.
   //
   const int cleanName;
-
-  Status status;
+    //
+  //	If we were produced by a user transformation, we will have other
+  //	dependancies that we need to track.
+  //
+  ImportModule* transformModule = nullptr;
+  Vector<ImportModule*> inputModules;
+  Vector<int> transformOptions;
+  Vector<View*> inputViews;
+  
+  Status status = INITIAL;
   Vector<ParameterDecl> parameters;
-  ModuleExpression* fromExpr;
-  ModuleExpression* toExpr;
-  ImportModule* fromTheory;
-  ImportModule* toModule;
+  ModuleExpression* fromExpr = nullptr;
+  ModuleExpression* toExpr = nullptr;
+  ImportModule* fromTheory = nullptr;
+  ImportModule* toModule = nullptr;
   //
   //	We store op->term mappings as term pairs so we can print out
   //	the view.
@@ -353,7 +375,6 @@ View::getStratExprMap() const
   return stratExprMap;
 }
 
-
 inline
 View::StratExprInfo::StratExprInfo(CallStrategy* call,
 				   StrategyExpression* value,
@@ -377,6 +398,54 @@ inline bool
 View::hasFreeParameters() const
 {
   return getNrParameters() > 0 && !(hasBoundParameters());
+}
+
+inline const View*
+View::getBaseView() const
+{
+  return baseView;
+}
+
+inline const Vector<Argument*>&
+View::getArguments() const
+{
+  return savedArguments;
+}
+
+inline void
+View::setTransformInfo(ImportModule* transModule,
+		       const Vector<ImportModule*>& inModules,
+		       const Vector<int>& transOptions,
+		       const Vector<View*>& inViews)
+{
+  transformModule = transModule;
+  inputModules = inModules;
+  transformOptions = transOptions;
+  inputViews = inViews;
+}
+
+inline ImportModule*
+View::getTransformModule() const
+{
+  return transformModule;
+}
+
+inline const Vector<ImportModule*>&
+View::getInputModules() const
+{
+  return inputModules;
+}
+
+inline const Vector<int>&
+View::getTransformOptions() const
+{
+  return transformOptions;
+}
+
+inline const Vector<View*>&
+View::getInputViews() const
+{
+  return inputViews;
 }
 
 #endif

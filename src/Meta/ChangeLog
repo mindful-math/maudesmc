@@ -1,3 +1,325 @@
+2026-08-19  Saruman the White  <eker@eker10>
+
+	* metaUpView.cc (MetaLevel::upParameterDecl): use
+	getParameterTheory() rather than getParameterTheoryExpression()
+	because the theory expression won't exist if the view is a partial
+	instantiation
+
+2026-08-16  Saruman the White  <eker@eker10>
+
+	* metaLevel.hh (class MetaLevel): added decl for
+	downViewExpressionList()
+
+	* metaDownView.cc (MetaLevel::downModuleExpression): handle
+	inputViews
+	(MetaLevel::downViewExpression): handle inputViews
+	(MetaLevel::downViewExpressionList): added
+	(MetaLevel::downModuleExpression): use downViewExpressionList()
+	(MetaLevel::downViewExpression): use downViewExpressionList()
+
+	* metaUpModule.cc (MetaLevel::upModuleExpression): (ImportModule*
+	version) handle inputViews
+	(MetaLevel::upViewExpression): (View* version) handle inputViews
+	(MetaLevel::upArgument): (ViewExpression* version) handle
+	inputViews
+	(MetaLevel::upModuleExpression): (ModuleExpression* version)
+	handle inputViews
+
+	* metaLevelSignature.cc: transformationSymbol now takes 4
+	arguments
+
+	* metaUpModule.cc (MetaLevel::upViewExpression):
+	getGeneratorModule() -> getTransformModule()
+	(MetaLevel::upViewExpression): getGenerationOptions() ->
+	getTransformOptions()
+
+2026-08-15  Saruman the White  <eker@eker10>
+
+	* metaUpModule.cc (MetaLevel::upViewExpressionList): handle the
+	empty and singleton cases
+
+	* metaDownView.cc (MetaLevel::downModuleExpression): pass dummy
+	input views to ModuleExpression()
+	(MetaLevel::downViewExpression): pass dummy input views to
+	ViewExpression()
+
+	* metaUpModule.cc (MetaLevel::upArgument): GENERATION ->
+	TRANSFORMATION
+	(MetaLevel::upModuleExpression): TRANSFORM -> TRANSFORMATION
+
+	* metaLevel.hh (class MetaLevel): added decl for
+	upViewExpressionList()
+
+	* metaUpModule.cc (MetaLevel::upModule): deleted commented out
+	line
+	(MetaLevel::upViewExpressionList): added
+
+	* metaLevel.hh (class MetaLevel): updated decls for upView() and
+	View* version of upHeader()
+
+	* metaUpView.cc (MetaLevel::upView): take and use replacementName
+	(MetaLevel::upHeader): take and use replacementName
+
+2026-08-06  Saruman the White  <eker@eker10>
+
+	* ascentFunctions.cc (MetaLevelOpSymbol::metaUpModule): check for
+	nullptr returned from getFlatModule()
+	(MetaLevelOpSymbol::metaUpImports): ditto
+	(MetaLevelOpSymbol::metaUpSorts): ditto
+	(MetaLevelOpSymbol::metaUpSubsortDecls): ditto
+	(MetaLevelOpSymbol::metaUpOpDecls): ditto
+	(MetaLevelOpSymbol::metaUpMbs): ditto
+	(MetaLevelOpSymbol::metaUpEqs): ditto
+	(MetaLevelOpSymbol::metaUpRls): ditto
+	(MetaLevelOpSymbol::metaUpStratDecls): ditto
+	(MetaLevelOpSymbol::metaUpSds): ditto
+
+2026-07-27  Saruman the White  <eker@eker10>
+
+	* descentFunctions.cc (MetaLevelOpSymbol::metaTypeExists): added
+
+	* metaLevel.hh (class MetaLevel): updated decl for downType2()
+
+	* metaDown.cc (MetaLevel::downType2): take dontAvise flag
+
+2026-07-21  Saruman the White  <eker@eker10>
+
+	* miModule.cc (InterpreterManagerSymbol::insertModule): call
+	tryToCleanCaches() rather than cleanCaches()
+	(InterpreterManagerSymbol::insertView): call tryToCleanCaches()
+	rather than cleanCaches()
+
+	* metaDownSignature.cc (MetaLevel::downSignature): use
+	protectCaches()/unprotectCaches() rather than cleanCaches()
+
+	* metaDown.cc (MetaLevel::downModule): use
+	protectCaches()/unprotectCaches() rather than cleanCaches()
+
+2026-07-19  Saruman the White  <eker@eker10>
+
+	* metaDownView.cc (MetaLevel::downView): relax the constraint on
+	declared name if a trueName is supplied
+
+2026-07-16  Saruman the White  <eker@eker10>
+
+	* metaLevel.hh (class MetaLevel): make 2 arg upQidList() public
+
+2026-07-14  Saruman the White  <eker@eker10>
+
+	* metaDownView.cc (MetaLevel::downModuleExpression): don't convert
+	ints to Tokens
+
+	* metaUpModule.cc (MetaLevel::upModuleExpression): don't convert
+	Tokens to ints
+
+	* metaLevel.hh (class MetaLevel): added decls for ImportModule*
+	versions of upHeader(), upParameterDecls(), upParameterDecl()
+
+	* metaUpModule.cc (MetaLevel::upHeader)
+	(MetaLevel::upParameterDecls, MetaLevel::upParameterDecl): added
+	ImportModule* versions
+	(MetaLevel::upModule): handle parameters
+
+2026-07-13  Saruman the White  <eker@eker10>
+
+	* metaLevel.hh (class MetaLevel): make const
+	Vector<ImportModule*>& version of upModuleExpressionList() public
+
+	* metaUpModule.cc (MetaLevel::upViewExpression): handle input
+	modules
+	(MetaLevel::upArgument): handle input modules
+
+	* metaDownSignature.cc (MetaLevel::downSignature): update comment
+
+2026-07-09  Saruman the White  <eker@eker10>
+
+	* metaDownView.cc (MetaLevel::downViewExpression): handle module
+	expression list in view generator call
+
+	* metaUpModule.cc (MetaLevel::upViewExpression): use
+	transformationSymbol rather than generationSymbol
+	(MetaLevel::upArgument): use transformationSymbol rather than
+	generationSymbol
+
+	* metaDownView.cc (MetaLevel::downViewExpression): use
+	transformationSymbol rather than generationSymbol
+
+	* metaLevelSignature.cc: deleted generationSymbol
+
+2026-07-07  Saruman the White  <eker@eker10>
+
+	* metaDownStrats.cc (MetaLevel::downStratCall): interprete ->
+	interpret
+
+	* metaDown.cc (MetaLevel::downTerm): interprete -> interpret
+
+2026-07-06  Saruman the White  <eker@eker10>
+
+	* metaDownView.cc (MetaLevel::downViewExpression): handle
+	generated view case
+
+2026-07-05  Saruman the White  <eker@eker10>
+
+	* metaUpModule.cc (MetaLevel::upViewExpression): handle generated
+	view case
+	(MetaLevel::upArgument): handle generated view case
+
+	* metaLevelSignature.cc: added generationSymbol
+
+	* metaDownView.cc (MetaLevel::downView): fix memory leak where we
+	were not destructing toModule if we failed to insert it into the
+	view
+
+2026-07-04  Saruman the White  <eker@eker10>
+
+	* metaDownView.cc (MetaLevel::downView): handle cleanName
+
+	* metaView.cc (MetaView::MetaView): handle cleanName argument
+
+	* metaView.hh (class MetaView): added int cleanName argument to
+	ctor
+
+2026-07-03  Saruman the White  <eker@eker10>
+
+	* metaLevel.hh (class MetaLevel): updated decl for downView()
+
+	* metaDownView.cc (MetaLevel::downView): support replacementName
+	arugment
+
+2026-06-29  Saruman the White  <eker@eker10>
+
+	* metaUpModule.cc (MetaLevel::upModuleExpression): fix bug where
+	we were using the ModuleExpression enum rather than the
+	ImportModule enum
+
+2026-06-28  Saruman the White  <eker@eker10>
+
+	* metaUpModule.cc (MetaLevel::upImports): check for bad import
+	mode
+
+	* metaDownView.cc (MetaLevel::downModuleExpression): fix bug where
+	we were calling downModuleExpressionList() on the wrong argument
+
+	* metaUpModule.cc (MetaLevel::upModule): use ImportModule* version
+	of upImports() 
+
+	* metaLevel.hh (class MetaLevel): added decl for ImportModule*
+	version of upImports()
+
+	* metaUpModule.cc (MetaLevel::upImports): added ImportModule*
+	version
+
+	* metaLevel.hh (class MetaLevel): added decls for following 5
+	member functions
+
+	* metaUpModule.cc (MetaLevel::upModuleExpression): added
+	ImportModule* version
+	(MetaLevel::upModuleExpressionList): added Vector<ImportModule*>&
+	version
+	(MetaLevel::upArguments): added Vector<Argument*>& version
+	(MetaLevel::upArgument): added Argument* version
+	(MetaLevel::upViewExpression): added View* view version
+
+	* metaLevel.hh (class MetaLevel): updated decl for downSignature()
+
+	* metaDownSignature.cc (MetaLevel::downSignature): take and pass
+	origin
+
+	* metaDown.cc (MetaLevel::downModule): pass origin as TEXT to
+	MetaModule()
+
+	* metaModule.hh (class MetaModule): updated decl for ctor
+
+	* metaModule.cc (MetaModule::MetaModule): take and pass origin
+
+2026-06-27  Saruman the White  <eker@eker10>
+
+	* metaDownView.cc (MetaLevel::downModuleExpressionList): handle
+	empty case
+
+	* metaLevel.hh (class MetaLevel): added decl for
+	upModuleExpressionList()
+
+	* metaUpModule.cc (MetaLevel::upModuleExpression): implement
+	TRANSFORM case
+	(MetaLevel::upModuleExpressionList): added
+
+	* metaLevel.hh (class MetaLevel): added decl for
+	downModuleExpressionList()
+
+	* metaDownView.cc (MetaLevel::downModuleExpressionList): added
+
+	* metaLevelSignature.cc: added transformationSymbol
+
+	* metaDownView.cc (MetaLevel::downModuleExpression): added
+	tranformation semantics
+
+2026-06-25  Saruman the White  <eker@eker10>
+
+	* metaLevel.hh (class MetaLevel): updated decl for downSignature()
+
+	* metaDownSignature.cc (MetaLevel::downSignature): take
+	replacementName argument
+
+2026-06-24  Saruman the White  <eker@eker10>
+
+	* metaLevel.cc (MetaLevel::downString): moved here
+
+	* metaLevel.hh (MetaLevel::downString): added
+
+2026-06-23  Saruman the White  <eker@eker10>
+
+	* metaLevel.hh (class MetaLevel): decl for new upModule()
+
+	* metaUpModule.cc (MetaLevel::upModule): added Module* version
+
+2026-03-26  Saruman the White  <eker@eker10>
+
+	* metaLevelOpSymbol.hh (class MetaLevelOpSymbol): eqRewrite() ->
+	eqRewriteFast(); complexStrategy() -> eqRewriteSlow()
+
+	* metaLevelOpSymbol.cc (MetaLevelOpSymbol::complexStrategy):
+	becomes eqRewriteSlow()
+	(MetaLevelOpSymbol::eqRewrite): becomes eqRewriteFast
+
+2026-02-18  Saruman the White  <eker@eker10>
+
+	* metaDownOps.cc (MetaLevel::downAttr): fix bug where rpo flag is
+	not being set for an rpo attribute
+
+2026-02-15  Saruman the White  <eker@eker10>
+
+	* metaLevelOpSymbol.cc (MetaLevelOpSymbol::complexStrategy): use
+	tryEquations() instead of FreeSymbol::eqRewrite()
+
+2026-02-10  Saruman the White  <eker@eker10>
+
+	* metaLevelOpSymbol.hh (class MetaLevelOpSymbol): added decls for
+	compileEquations() and static 3 arg eqRewrite(); made many
+	overloaded member functions protected
+
+	* metaLevelOpSymbol.cc (MetaLevelOpSymbol::compileEquations):
+	added
+	(MetaLevelOpSymbol::eqRewrite): added static 3 arg version
+	(MetaLevelOpSymbol::eqRewrite): use tryEquations() instead of
+	FreeSymbol::eqRewrite()
+
+2025-07-29  Rubén Rubio <rubenrub@ucm.es>
+
+	* metaDownOps.cc (downOpDecl): pass rpo to addPolymorph and
+	addOpDeclaration
+	(downAttr): added rpo
+
+	* metaDownRenamings.cc (downRenamingAttribute): added rpo
+
+	* metaLevel.hh (AttributeInfo): added rpo
+
+	* metaLevelSignature.cc: added rpoSymbol
+
+	* metaUpModule.cc (upRenamingAttributeSet): added rpo
+	(upPolymorphDecl): added rpo
+	(upOpDecl): added rpo
+
 2025-06-18  Saruman the White  <eker@eker10>
 
 	* metaDown.cc (MetaLevel::downSort): don't allow sorts with bad

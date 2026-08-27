@@ -3,7 +3,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2021 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -92,7 +92,6 @@ int terminationSet;
 string accumulator;
 string fileName;
 
-//int terminationCondition;
 int minLength;
 extern Vector<Token> lexerBubble;
 extern bool suppressParserErrorMessage;
@@ -147,6 +146,7 @@ in					RETURN(KW_IN)
 
 <INITIAL>{
 th|fth|sth|oth|mod|fmod|smod|omod|obj	RETURN(KW_MOD)  // need to know which one we saw
+make					RETURN(KW_MAKE)  // needed for line number handling
 view					RETURN(KW_VIEW)  // needed for line number handling
 oo					return KW_OO;
 load					return KW_LOAD;
@@ -359,6 +359,7 @@ id-hook					RETURN(KW_ID_HOOK)
 op-hook					RETURN(KW_OP_HOOK)
 term-hook				RETURN(KW_TERM_HOOK)
 pconst					RETURN(KW_PCONST)
+rpo					RETURN(KW_RPO)
 is					RETURN(KW_IS)
 if					RETURN(KW_IF)
 pr|protecting|ex|extending|us|using|inc|including|gb|generated-by	RETURN(KW_IMPORT)
@@ -448,7 +449,7 @@ if					{
 					  else
 					    STORE
 					}
-assoc|associative|comm|commutative|id:|identity:|idem|idempotent|iter|iterated|left|right|prec|precedence|gather|metadata|strat|strategy|frozen|poly|polymorphic|ctor|constructor|latex|special|config|configuration|obj|object|msg|message|ditto|format|memo|pconst	{
+assoc|associative|comm|commutative|id:|identity:|idem|idempotent|iter|iterated|left|right|prec|precedence|gather|metadata|strat|strategy|frozen|poly|polymorphic|ctor|constructor|latex|special|config|configuration|obj|object|msg|message|ditto|format|memo|pconst|rpo	{
 					  if (parenCount == 0 && (terminationSet & BAR_OP_ATTRIBUTE) && lexerBubble.length() >= minLength)
 					    {
 					      yyless(0);  // need to re-lex it to get the correct return value

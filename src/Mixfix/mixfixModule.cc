@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -167,6 +167,8 @@
 #include "objectConstructorSymbol.hh"
 #include "commutativeDecomposeEqualitySymbol.hh"
 #include "importModule.hh"
+#include "moduleResultSymbol.hh"
+#include "viewResultSymbol.hh"
 
 #include "interpreter.hh"
 #include "global.hh"  // HACK shouldn't be accessing global variables
@@ -287,6 +289,8 @@ MixfixModule::moduleTypeString(ModuleType type)
 {
   static const char* const typeStrings[] = {"fmod", "mod", "fth", "th"};
 
+  if (type == MAKE_STATEMENT)
+    return "make";
   if (type & STRATEGY)
     return type & THEORY ? "sth" : "smod";
   if (type & OBJECT_ORIENTED)
@@ -300,6 +304,8 @@ MixfixModule::moduleEndString(ModuleType type)
 {
   static const char* const typeStrings[] = {"endfm", "endm", "endfth", "endth"};
 
+  if (type == MAKE_STATEMENT)
+    return "endm";
   if (type & STRATEGY)
     return type & THEORY ? "endsth" : "endsm";
   if (type & OBJECT_ORIENTED)

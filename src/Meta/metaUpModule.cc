@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -19,6 +19,69 @@
     Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 
 */
+
+DagNode*
+MetaLevel::upModule(bool flat, ImportModule* m, PointerMap& qidMap, int replacementName)
+{
+  Vector<DagNode*> args;
+  args.push_back(upHeader(m, qidMap, replacementName));
+  if (flat)
+    args.push_back(nilImportListSymbol->makeDagNode());
+  else
+    args.push_back(upImports(m, qidMap));
+  args.push_back(upSorts(flat, m, qidMap));
+  args.push_back(upSubsortDecls(flat, m, qidMap));
+  args.push_back(upOpDecls(flat, m, qidMap));
+  args.push_back(upMbs(flat, m, qidMap));
+  args.push_back(upEqs(flat, m, qidMap));
+
+  MixfixModule::ModuleType mt = m->getModuleType();
+  if (mt == MixfixModule::FUNCTIONAL_MODULE)
+    return fmodSymbol->makeDagNode(args);
+  else if (mt == MixfixModule::FUNCTIONAL_THEORY)
+    return fthSymbol->makeDagNode(args);
+  args.push_back(upRls(flat, m, qidMap));
+  if (mt == MixfixModule::SYSTEM_MODULE)
+    return modSymbol->makeDagNode(args);
+  else if (mt == MixfixModule::SYSTEM_THEORY)
+    return thSymbol->makeDagNode(args);
+  args.push_back(upStratDecls(flat, m, qidMap));
+  args.push_back(upSds(flat, m, qidMap));
+  return ((mt == MixfixModule::STRATEGY_MODULE) ? smodSymbol : sthSymbol)->makeDagNode(args);
+}
+
+DagNode*
+MetaLevel::upHeader(ImportModule* m, PointerMap& qidMap, int replacementName)
+{
+  DagNode* name = upQid(replacementName, qidMap);
+  if (m->getNrParameters() == 0)
+    return name;
+  Vector<DagNode*> args(2);
+  args[0] = name;
+  args[1] = upParameterDecls(m, qidMap);
+  return headerSymbol->makeDagNode(args);
+}
+
+DagNode*
+MetaLevel::upParameterDecls(ImportModule* m, PointerMap& qidMap)
+{
+  Index nrParameters = m->getNrParameters();
+  if (nrParameters == 1)
+    return upParameterDecl(m, 0, qidMap);
+  Vector<DagNode*> args(nrParameters);
+  for (Index i = 0; i < nrParameters; ++i)
+    args[i] = upParameterDecl(m, i, qidMap);
+  return parameterDeclListSymbol->makeDagNode(args);
+}
+
+DagNode*
+MetaLevel::upParameterDecl(ImportModule* m, Index index, PointerMap& qidMap)
+{
+  Vector<DagNode*> args(2);
+  args[0] = upQid(m->getParameterName(index), qidMap);
+  args[1] = upModuleExpression(m->getParameterTheory(index), qidMap);
+  return parameterDeclSymbol->makeDagNode(args);
+}
 
 DagNode*
 MetaLevel::upModule(bool flat, PreModule* pm, PointerMap& qidMap)
@@ -181,10 +244,34 @@ MetaLevel::upModuleExpression(const ModuleExpression* e, PointerMap& qidMap)
 	args[1] = upArguments(e->getArguments(), qidMap);
 	return instantiationSymbol->makeDagNode(args);
       }
+    case ModuleExpression::TRANSFORMATION:
+      {
+	Vector<DagNode*> args(4);
+	args[0] = upQid(e->getModuleName().code(), qidMap);
+	args[1] = upModuleExpressionList(e->getInputModules(), qidMap);
+	args[2] = upQidList(e->getOptions(), qidMap);
+	args[3] = upArguments(e->getArguments(), qidMap);
+	return transformationSymbol->makeDagNode(args);
+      }
     default:
       CantHappen("bad module expression");
     }
-  return 0;
+  return nullptr;
+}
+
+DagNode*
+MetaLevel::upModuleExpressionList(const Vector<ModuleExpression*>& modExprList,
+				  PointerMap& qidMap)
+{
+  int nrModExprs = modExprList.size();
+  if (nrModExprs == 0)
+    return emptyTermListSymbol->makeDagNode();  // because we share a kind with TermList
+  if (nrModExprs == 1)
+    return upModuleExpression(modExprList[0], qidMap);
+  Vector<DagNode*> args(nrModExprs);
+  for (int i = 0; i < nrModExprs; ++i)
+    args[i] = upModuleExpression(modExprList[i], qidMap);
+  return metaArgSymbol->makeDagNode(args);  // because we share a kind with TermList
 }
 
 DagNode*
@@ -203,15 +290,32 @@ MetaLevel::upArguments(const Vector<ViewExpression*>& arguments, PointerMap& qid
 DagNode*
 MetaLevel::upArgument(const ViewExpression* argument, PointerMap& qidMap)
 {
-  if (argument->isInstantiation())
+  switch (argument->getType())
     {
-      Vector<DagNode*> args(2);
-      args[0] = upArgument(argument->getView(), qidMap);
-      args[1] = upArguments(argument->getArguments(), qidMap);
-      return instantiationSymbol->makeDagNode(args);
+    case ViewExpression::SIMPLE_NAME:  // view or parameter name
+      {
+	return upQid(argument->getName().code(), qidMap);
+      }
+    case ViewExpression::INSTANTIATION:
+      {
+	Vector<DagNode*> args(2);
+	args[0] = upArgument(argument->getView(), qidMap);
+	args[1] = upArguments(argument->getArguments(), qidMap);
+	return instantiationSymbol->makeDagNode(args);
     }
-  DagNode* name = upQid(argument->getName().code(), qidMap);  // view or parameter name
-  return name;
+    case ViewExpression::TRANSFORMATION:
+      {
+	Vector<DagNode*> args(4);
+	args[0] = upQid(argument->getName().code(), qidMap);
+	args[1] = upModuleExpressionList(argument->getInputModules(), qidMap);
+	args[2] = upQidList(argument->getOptions(), qidMap);
+	args[3] = upArguments(argument->getArguments(), qidMap);
+	return transformationSymbol->makeDagNode(args);
+      }
+    default:
+      CantHappen("bad module expression");
+    }
+  return nullptr;
 }
 
 DagNode*
@@ -365,6 +469,15 @@ MetaLevel::upRenamingAttributeSet(const Renaming* r, int index, PointerMap& qidM
 	Vector<DagNode*> args2(1);
 	args2[0] = new StringDagNode(stringSymbol, r);
 	args.append(latexSymbol->makeDagNode(args2));
+      }
+  }
+  {
+    int rpo = r->getRpo(index);
+    if (rpo != NONE)
+      {
+	Vector<DagNode*> args2(1);
+	args2[0] = succSymbol->makeNatDag(rpo);
+	args.append(rpoSymbol->makeDagNode(args2));
       }
   }
   return upGroup(args, emptyAttrSetSymbol, attrSetSymbol);
@@ -522,6 +635,11 @@ MetaLevel::upPolymorphDecl(ImportModule* m, int index, PointerMap& qidMap)
       }
     if (st.hasFlag(SymbolType::LEFT_ID | SymbolType::RIGHT_ID))
       attrArgs.append(upIdentity(m, st, m->getPolymorphIdentity(index), qidMap));
+    if (st.hasFlag(SymbolType::RPO))
+      {
+        polyArgs[0] = succSymbol->makeNatDag(m->getPolymorphRpo(index));
+        attrArgs.append(rpoSymbol->makeDagNode(polyArgs));
+      }
     int metadata = m->getPolymorphMetadata(index);
     if (metadata != NONE)
       {
@@ -668,7 +786,11 @@ MetaLevel::upOpDecl(ImportModule* m, int symbolNr, int declNr, PointerMap& qidMa
       }
     if (st.hasFlag(SymbolType::LEFT_ID | SymbolType::RIGHT_ID))
       attrArgs.append(upIdentity(m, st, safeCast(BinarySymbol*, symbol)->getIdentity(), qidMap));
-
+    if (st.hasFlag(SymbolType::RPO))
+      {
+	args3[0] = succSymbol->makeNatDag(m->getRpo(symbol));
+	attrArgs.append(rpoSymbol->makeDagNode(args3));
+      }
     int metadata = m->getMetadata(symbol, declNr);
     if (metadata != NONE)
       {
@@ -1179,4 +1301,167 @@ MetaLevel::upConditionFragment(const ConditionFragment* fragment,
       return 0; //  avoid compiler warning
     }
   return s->makeDagNode(args);
+}
+
+DagNode*
+MetaLevel::upModuleExpression(ImportModule* m, PointerMap& qidMap)
+{
+  //
+  //	We construct a meta module expression from an ImportModule.
+  //	This is needed because the imports of an instantiated module
+  //	will not correspond to any existing module expression.
+  //
+  switch (m->getOrigin())
+    {
+    case ImportModule::TEXT:
+      {
+	return upQid(m->id(), qidMap);
+      }
+    case ImportModule::SUMMATION:
+      {
+	Index nrModules = m->getNrImports();
+	Vector<DagNode*> args(nrModules);
+	for (Index i = 0; i < nrModules; ++i)
+	  args[i] = upModuleExpression(m->getImportedModule(i), qidMap);
+	return sumSymbol->makeDagNode(args);
+      }
+    case ImportModule::RENAMING:
+      {
+	Vector<DagNode*> args(2);
+	args[0] = upModuleExpression(m->getBaseModule(), qidMap);
+	args[1] = upRenaming(m->getCanonicalRenaming(), qidMap);
+	return renamingSymbol->makeDagNode(args);
+      }
+    case ImportModule::INSTANTIATION:
+      {
+	Vector<DagNode*> args(2);
+	args[0] = upModuleExpression(m->getBaseModule(), qidMap);
+	args[1] = upArguments(m->getArguments(), qidMap);
+	return instantiationSymbol->makeDagNode(args);
+      }
+    case ImportModule::TRANSFORMATION:
+      {
+	Vector<DagNode*> args(4);
+	args[0] = upModuleExpression(m->getTransformModule(), qidMap);  // should be a Qid
+	args[1] = upModuleExpressionList(m->getInputModules(), qidMap);
+	args[2] = upQidList(m->getTransformOptions(), qidMap);
+	args[3] = upViewExpressionList(m->getInputViews(), qidMap);
+	return transformationSymbol->makeDagNode(args);
+      }
+    default:
+      CantHappen("bad module expression");
+    }
+  return nullptr;
+}
+
+DagNode*
+MetaLevel::upModuleExpressionList(const Vector<ImportModule*>& modExprList,
+				  PointerMap& qidMap)
+{
+  int nrModExprs = modExprList.size();
+  if (nrModExprs == 0)
+    return emptyTermListSymbol->makeDagNode();  // because we share a kind with TermList
+  if (nrModExprs == 1)
+    return upModuleExpression(modExprList[0], qidMap);
+
+  Vector<DagNode*> args(nrModExprs);
+  for (int i = 0; i < nrModExprs; ++i)
+    args[i] = upModuleExpression(modExprList[i], qidMap);
+  return metaArgSymbol->makeDagNode(args);  // because we share a kind with TermList
+}
+
+DagNode*
+MetaLevel::upArguments(const Vector<Argument*>& arguments, PointerMap& qidMap)
+{
+  int nrArguments = arguments.size();
+  Assert(nrArguments >= 1, "no arguments");
+  if (nrArguments == 1)
+    return upArgument(arguments[0], qidMap);
+  Vector<DagNode*> args(nrArguments);
+  for (int i = 0; i < nrArguments; ++i)
+    args[i] = upArgument(arguments[i], qidMap);
+  return metaArgSymbol->makeDagNode(args);
+}
+
+DagNode*
+MetaLevel::upArgument(const Argument* argument, PointerMap& qidMap)
+{
+  if (const Parameter* p = dynamic_cast<const Parameter*>(argument))
+    return upQid(p->id(), qidMap);
+  if (const View* v = dynamic_cast<const View*>(argument))
+    return upViewExpression(v, qidMap);
+  CantHappen("Argument not a parameter nor a view");
+  return nullptr;
+}
+
+DagNode*
+MetaLevel::upViewExpressionList(const Vector<View*>& viewList, PointerMap& qidMap)
+{
+  Index nrViewExprs = viewList.size();
+  if (nrViewExprs == 0)
+    return emptyTermListSymbol->makeDagNode();  // because we share a kind with TermList
+  if (nrViewExprs == 1)
+    return upViewExpression(viewList[0], qidMap);
+
+  Vector<DagNode*> args(nrViewExprs);
+  for (Index i = 0; i < nrViewExprs; ++i)
+    args[i] = upViewExpression(viewList[i], qidMap);
+  return metaArgSymbol->makeDagNode(args);
+}
+
+DagNode*
+MetaLevel::upViewExpression(const View* view, PointerMap& qidMap)
+{
+  if (const View* baseView = view->getBaseView())
+    {
+      //
+      //	View instantiation.
+      //
+      Vector<DagNode*> args(2);
+      args[0] = upViewExpression(baseView, qidMap);
+      args[1] = upArguments(view->getArguments(), qidMap);
+      return instantiationSymbol->makeDagNode(args);
+    }
+  else if (const ImportModule* genModule = view->getTransformModule())
+    {
+      //
+      //	Transformed view.
+      //
+      Vector<DagNode*> args(4);
+      args[0] = upQid(genModule->id(), qidMap);
+      args[1] = upModuleExpressionList(view->getInputModules(), qidMap);
+      args[2] = upQidList(view->getTransformOptions(), qidMap);
+      args[3] = upViewExpressionList(view->getInputViews(), qidMap);
+      return transformationSymbol->makeDagNode(args);
+    }
+  return upQid(view->id(), qidMap);
+}
+
+DagNode*
+MetaLevel::upImports(ImportModule* m, PointerMap& qidMap)
+{
+  Index nrModules = m->getNrImports();
+  Vector<DagNode*> args(nrModules);
+  Vector<DagNode*> args2(1);
+  for (Index i = 0; i < nrModules; ++i)
+    {
+      ImportModule* im = m->getImportedModule(i);
+      args2[0] = upModuleExpression(im, qidMap);
+      
+      ImportModule::ImportMode mode = m->getImportMode(i);
+      DebugAdvisory("m = " << m << " mode = " << mode << " import = " << im);
+      Symbol* s = generatedBySymbol;
+      if (mode == ImportModule::INCLUDING)
+	s = includingSymbol;
+      else if (mode == ImportModule::PROTECTING)
+	s = protectingSymbol;
+      else if (mode == ImportModule::EXTENDING)
+	s = extendingSymbol;
+      else if (mode == ImportModule::GENERATED_BY)
+	s = generatedBySymbol;
+      else
+	CantHappen("bad import mode = " << mode);
+      args[i] = s->makeDagNode(args2);
+    }
+  return upGroup(args, nilImportListSymbol, importListSymbol);
 }

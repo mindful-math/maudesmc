@@ -52,7 +52,8 @@ class MixfixModule : public ProfileModule, public MetadataStore, protected Share
     SYSTEM = 1,
     THEORY = 2,
     STRATEGY = 4,
-    OBJECT_ORIENTED = 8  // a fiction for SyntacticPreModule and for us during construction
+    OBJECT_ORIENTED = 8,  // a fiction for SyntacticPreModule and for us during construction
+    MADE = 16  // another fiction for SyntacticPreModule
   };
 
 public:
@@ -69,7 +70,12 @@ public:
     //	the object oriented flag has to be removed.
     //
     OBJECT_ORIENTED_MODULE = SYSTEM | OBJECT_ORIENTED,
-    OBJECT_ORIENTED_THEORY = SYSTEM | OBJECT_ORIENTED | THEORY
+    OBJECT_ORIENTED_THEORY = SYSTEM | OBJECT_ORIENTED | THEORY,
+    //
+    //	This is to allow SyntacticPreModule to record make statements as pre-modules.
+    //	No actual MixfixModule will ever have this type.
+    //
+    MAKE_STATEMENT = MADE,
   };
 
   enum GatherSymbols
@@ -103,6 +109,7 @@ public:
 			   const Vector<int>& gather,
 			   const Vector<int>& format,
 			   int latexMacro,
+			   int rpo,
 			   int metadata,
 			   bool& firstDecl);
   void addVariableAlias(Token name, Sort* sort);
@@ -115,6 +122,7 @@ public:
 		   const Vector<int>& gather,
 		   const Vector<int>& format,
 		   int latexMacro,
+		   int rpo,
 		   int metadata);
   int addStrategy(Token name,
 		  const Vector<Sort*>& domainSorts,
@@ -212,6 +220,7 @@ public:
   void getGather(const Symbol* symbol, Vector<int>& gather) const;
   const Vector<int>& getFormat(const Symbol* symbol) const;
   int getLatexMacro(const Symbol* symbol) const;
+  int getRpo(const Symbol* symbol) const;
   const AliasMap& getVariableAliases() const;
   void getParserStats(int& nrNonterminals, int& nrTerminals, int& nrProductions);
   void getDataAttachments(Symbol* symbol,
@@ -226,6 +235,8 @@ public:
 			  Vector<Term*>& terms) const;
   Sort* getStrategyRangeSort() const;
   const NatSet& getObjectSymbols() const;
+  ModuleResultSymbol* getModuleResultSymbol() const;
+  ViewResultSymbol* getViewResultSymbol() const;
   //
   //	Find functions.
   //
@@ -259,6 +270,7 @@ public:
   const Vector<int>& getPolymorphStrategy(int index) const;
   const NatSet& getPolymorphFrozen(int index) const;
   int getPolymorphLatexMacro(int index) const;
+  int getPolymorphRpo(int index) const;
   int getPolymorphPrec(int index) const;
   void getPolymorphGather(int index, Vector<int>& gather) const;
   const Vector<int>& getPolymorphFormat(int index) const;
@@ -356,6 +368,7 @@ public:
   
 protected:
   static int findMatchingParen(const Vector<Token>& tokens, int pos);
+  void setModuleType(ModuleType type);
 
   // We need to account rule labels here (before importing statements) because
   // strategy statements can use them
@@ -505,6 +518,7 @@ private:
     SIMPLE_NUMBER_OF_TYPES = 5,
     //
     //	In a complex parser, for each kind, we need a nonterminal for t1 \/ t2 \/ ... \/ tn
+    //
     TERM_DISJUNCTION_TYPE = 5,
     COMPLEX_NUMBER_OF_TYPES = 6,
   };
@@ -518,13 +532,20 @@ private:
 
   struct SymbolInfo
   {
+    //
+    //	This function recovers the GATHER_e/GATHER_E/GATHER_AMP representation
+    //	from the precendence representation that is used for parsing and is
+    //	computed when the signature is closed.
+    //
     void revertGather(Vector<int>& gatherSymbols) const;
 
     Vector<int> mixfixSyntax;
     Vector<int> gather;
     Vector<int> format;
     Vector<int> latexMacroUnpacked;
+    Vector<int> rawStrategy;  // we keep a copy of the raw strategy for consistency checking
     int latexMacro = NONE;
+    int rpo = NONE;
     short prec;
     short polymorphIndex;  // for polymorphs and polymorph instances only
     SymbolType symbolType;
@@ -584,6 +605,16 @@ private:
 
   int nonTerminal(int componentIndex, NonTerminalType type);
   int nonTerminal(const Sort* sort, NonTerminalType type);
+
+  bool compatible(Index existingSymbolIndex,
+		  SymbolType symbolType,
+		  const Vector<int>& strategy,
+		  const NatSet& frozen,
+		  int prec,
+		  const Vector<int>& gather,
+		  const Vector<int>& format,
+		  int latexMacro,
+		  int rpo);
 
   static int domainComponentIndex(const Symbol* symbol, int argNr);
   static int mayAssoc(Symbol* symbol, int argNr);
@@ -1049,6 +1080,9 @@ private:
   SMT_Info smtInfo;
   SMT_Status smtStatus;
 
+  ModuleResultSymbol* moduleResultSymbol = nullptr;
+  ViewResultSymbol* viewResultSymbol = nullptr;
+
   static const char* latexRed;
   static const char* latexGreen;
   static const char* latexBlue;
@@ -1138,6 +1172,12 @@ MixfixModule::getPolymorphLatexMacro(int index) const
 }
 
 inline int
+MixfixModule::getPolymorphRpo(int index) const
+{
+  return polymorphs[index].symbolInfo.rpo;
+}
+
+inline int
 MixfixModule::getPolymorphMetadata(int index) const
 {
   return polymorphs[index].metadata;
@@ -1171,6 +1211,12 @@ inline int
 MixfixModule::getLatexMacro(const Symbol* symbol) const
 {
   return symbolInfo[symbol->getIndexWithinModule()].latexMacro;
+}
+
+inline int
+MixfixModule::getRpo(const Symbol* symbol) const
+{
+  return symbolInfo[symbol->getIndexWithinModule()].rpo;
 }
 
 inline MixfixModule::ModuleType
@@ -1308,6 +1354,16 @@ MixfixModule::processingComplete()
 }
 
 inline void
+MixfixModule::setModuleType(ModuleType type)
+{
+  //
+  //	This is used to turn a make statement into a regular module, once
+  //	we know its single import.
+  //
+  moduleType = type;
+}
+
+inline void
 MixfixModule::installStatementTransformer(StatementTransformer* st)
 {
   statementTransformer = st;
@@ -1366,4 +1422,15 @@ MixfixModule::nonTerminal(const Sort* sort, NonTerminalType type)
   return nonTerminal(sort->component()->getIndexWithinModule(), type);
 }
 
+inline ModuleResultSymbol*
+MixfixModule::getModuleResultSymbol() const
+{
+  return moduleResultSymbol;
+}
+
+inline ViewResultSymbol*
+MixfixModule::getViewResultSymbol() const
+{
+  return viewResultSymbol;
+}
 #endif

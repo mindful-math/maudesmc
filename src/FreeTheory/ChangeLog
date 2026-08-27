@@ -1,3 +1,447 @@
+2026-06-23  Saruman the White  <eker@eker10>
+
+	* freeSymbol.cc (FreeSymbol::computeBaseSort): fix typo in
+	Assert()
+
+2026-03-31  Saruman the White  <eker@eker10>
+
+	* freeNet.cc (FreeNet::moreImportant): changed heuristic to favor
+	non-free symbols
+
+	* freeSymbol.cc (FreeSymbol::chooseNullNetFunction): use
+	eqRewriteNullNetGeneral<>()
+
+	* freeNetExec.cc (FreeNet::generalNullNet): uncommented
+
+	* freeSymbol.hh: added decl for template eqRewriteNullNetGeneral()
+
+	* freeSymbol.cc (FreeSymbol::eqRewriteNullNetGeneral): added
+	template
+
+	* freeSymbol.hh (class FreeSymbol): added decls for
+	chooseNullNetFunction() and chooseNonNullNetFunction()
+
+	* freeSymbol.cc (FreeSymbol::chooseNullNetFunction)
+	(FreeSymbol::chooseNonNullNetFunction): added
+	(FreeSymbol::chooseEqRewriteFunction): use chooseNullNetFunction()
+	and chooseNonNullNetFunction()
+
+2026-03-25  Saruman the White  <eker@eker10>
+
+	* freeNetExec.cc (FreeNet::applyReplaceNoOwise2): added comment to
+	explain purpose
+	(FreeNet::lowArityApplyReplace): reordered pre-loop setup
+	(FreeNet::fastApplyReplace): ditto
+	(FreeNet::superFastApplyReplace): ditto
+
+2026-03-19  Saruman the White  <eker@eker10>
+
+	* freeSymbol.hh (class FreeSymbol): eqRewriteCtorUnroll<>() ->
+	eqRewriteCtor<>()
+
+	* freeSymbol.cc (FreeSymbol::chooseEqRewriteFunction):
+	eqRewriteCtorUnroll<>() -> eqRewriteCtor<>()
+	(FreeSymbol::eqRewriteCtorUnroll): becomes eqRewriteCtor()
+	(FreeSymbol::eqRewriteLowArity): update description
+
+	* freeNetExec.cc (FreeNet::generalNullNet): commented out
+
+	* freeNet.hh (class FreeNet): added decl for generalNullNet()
+
+	* freeSymbol.cc (FreeSymbol::chooseEqRewriteFunction):
+	onlyFreeLowAritySymbols() -> noHighArityFreeSymbols()
+
+	* freeNetExec.cc (FreeNet::lowArityApplyReplace): deal with aliens
+	and constants
+	(FreeNet::fastApplyReplace): revert to dealing with constants
+	(FreeNet::superFastApplyReplace): ditto
+	(FreeNet::generalNullNet): added
+
+	* freeNet.hh (class FreeNet): freeAndLowArity -> alienOrLowArity
+	(FreeNet::onlyFreeLowAritySymbols): becomes
+	noHighArityFreeSymbols()
+
+	* freeNet.cc (FreeNet::FreeNet): freeAndLowArity becomes
+	alienOrLowArity
+	(FreeNet::fillOutNode): freeAndLowArity -> alienOrLowArity
+
+	* freePreNetSemiCompiler.cc (FreePreNet::semiCompileNode): revert
+	treating constants as functions for storing pointers to arguments
+	lists
+
+2026-03-18  Saruman the White  <eker@eker10>
+
+	* freeSymbol.cc (FreeSymbol::chooseEqRewriteFunction): wrap return
+	to see which function is chosen
+
+2026-03-16  Saruman the White  <eker@eker10>
+
+	* freeSymbol.cc (FreeSymbol::chooseEqRewriteFunction): Assert()
+	that there is only one remainder in the null net super fast case
+
+	* freePreNet.cc (FreePreNet::buildNet): allow potentialSubsumers
+	to be ground - otherwise constants can't subsume themselves and
+	since there are no arguments, subsumption can't happen on
+	arguments
+
+2026-03-15  Saruman the White  <eker@eker10>
+
+	* freeSymbol.cc (FreeSymbol::chooseEqRewriteFunction): support
+	eqRewriteLowArity<>
+
+	* freeSymbol.hh (class FreeSymbol): added decl for function
+	template eqRewriteLowArity()
+
+	* freeSymbol.cc (FreeSymbol::eqRewriteFast): fix comment
+	(FreeSymbol::eqRewriteLowArity): added
+
+	* freeNet.hh (class FreeNet): added decl for
+	lowArityApplyReplace()
+
+	* freeNetExec.cc (FreeNet::lowArityApplyReplace): added
+	(FreeNet::fastApplyReplace, FreeNet::superFastApplyReplace):
+	cleaned up
+
+2026-03-06  Saruman the White  <eker@eker10>
+
+	* freePreNetSemiCompiler.cc (FreePreNet::semiCompileNode):
+	allocate a slot for constants, so that the fast path code doesn't
+	have to branch
+
+	* freeNetExec.cc (FreeNet::superFastApplyReplace): allows store
+	pointer to internal in stackBase[s] now that we allocate a slot
+	even for constants
+	(FreeNet::fastApplyReplace): ditto
+
+2026-03-02  Saruman the White  <eker@eker10>
+
+	* freeRemainder.hh (FreeRemainder::fastMatchReplace): don't load
+	stackBase until we know we need it
+	(FreeRemainder::superFastMatchReplace): ditto
+	(FreeRemainder::generalMatchReplace): is isNull() optimization in
+	the fast and super-fast cases
+
+2026-02-24  Saruman the White  <eker@eker10>
+
+	* freeNet.hh (class FreeNet): added comment
+
+2026-02-20  Saruman the White  <eker@eker10>
+
+	* freeNetExec.cc (FreeNet::fastApplyReplace): delay filling out
+	stack[0]
+	(FreeNet::superFastApplyReplace): ditto
+
+	* freeSymbol.cc (FreeSymbol::chooseEqRewriteFunction): reorganized
+
+	* freeNet.hh (FreeNet::singleRemainder): deleted
+
+	* freeNetExec.cc (FreeNet::superFastApplyReplace): only deal with
+	a single remainder in each fastApplicable Vector
+	(FreeNet::fastApplyReplace): ditto
+
+	* freeSymbol.cc (FreeSymbol::chooseEqRewriteFunction): use
+	getMaxNrRemainders() == 1 instead of singleRemainder()
+	(FreeSymbol::chooseEqRewriteFunction): only use eqRewriteFast<>()
+	and eqRewriteSuperFast<>() if getMaxNrRemainders() == 1
+
+	* freeNet.hh (class FreeNet): added data member maxNrRemainders
+	(FreeNet::getMaxNrRemainders): added
+
+	* freeNet.cc (FreeNet::FreeNet): init maxNrRemainders
+	(FreeNet::buildRemainders): update maxNrRemainders
+
+	* freeRemainder.cc (FreeRemainder::FreeRemainder): added comment
+
+	* freeRemainder.hh (FreeRemainder::superFastMatchReplace):
+	isNull() optimization so we don't check first for a non-null
+	Vector and then for a non-empty Vector
+	(FreeRemainder::fastMatchReplace): ditto
+
+2026-02-18  Saruman the White  <eker@eker10>
+
+	* freeNetExec.cc (FreeNet::fastNullNet)
+	(FreeNet::superFastNullNet): delete stray ;
+	(FreeNet::fastNullNet, FreeNet::superFastNullNet): optimized
+	assuming we have a single remainder
+
+	* freeSymbol.cc (FreeSymbol::chooseEqRewriteFunction): check for a
+	single remainder in the fast case and Assert() a single remainder
+	in the super-fast case
+	(FreeSymbol::chooseEqRewriteFunction): eqRewriteNullNetFast<0>
+	should never exist
+	(FreeSymbol::chooseEqRewriteFunction): eqRewriteFast<0> and
+	eqRewriteSuperFast<0> should never exist
+
+	* freeNet.hh (FreeNet::singleRemainder): added
+
+2026-02-17  Saruman the White  <eker@eker10>
+
+	* freeSymbol.hh (class FreeSymbol): added decls for
+	eqRewriteNullNetFast<>() and eqRewriteNullNetSuperFast<>()
+
+	* freeSymbol.cc (FreeSymbol::eqRewriteNullNetFast): added
+	(FreeSymbol::eqRewriteNullNetSuperFast): added
+	(FreeSymbol::chooseEqRewriteFunction): use
+	eqRewriteNullNetFast<>() and eqRewriteNullNetSuperFast<>
+
+	* freeNetExec.cc (FreeNet::superFastApplyReplace): only handle
+	non-empty discrimination nets
+	(FreeNet::fastNullNet): added
+	(FreeNet::superFastNullNet): added
+
+	* freeSymbol.cc (FreeSymbol::chooseEqRewriteFunction): exclude
+	empty discrimination nets from fast and super-fast cases
+
+	* freeNet.hh (FreeNet::emptyNet): added
+
+	* freeSymbol.cc (FreeSymbol::chooseEqRewriteFunction): fix bug
+	where we weren't considering high arity symbols that have low
+	arity (or empty) descrimination nets
+
+	* freeSymbol.hh (class FreeSymbol): eqRewriteCtorFast<>() ->
+	eqRewriteCtorUnroll<>()
+	(class FreeSymbol): added decl for eqRewriteUnroll<>()
+
+	* freeSymbol.cc (FreeSymbol::eqRewriteCtorFast): becomes
+	eqRewriteCtorUnroll<>()
+	(FreeSymbol::chooseEqRewriteFunction): added
+	(FreeSymbol::compileEquations): use chooseEqRewriteFunction()
+
+	* freeNet.hh (class FreeNet): deleted decl for applyReplaceFast2()
+
+	* freeSymbol.cc (FreeSymbol::eqRewriteFast): becomes
+	eqRewriteUnroll<>()
+	(FreeSymbol::eqRewriteSuperFast): becomes eqRewriteFast<>()
+	(FreeSymbol::eqRewriteSuperFast): added
+
+	* freeNet.hh (class FreeNet): applyReplaceFast() decl ->
+	(class FreeNet): added decl for superFastApplyReplace()
+
+	* freeNetExec.cc (FreeNet::applyReplaceFast): becomes
+	fastApplyReplace()
+	(FreeNet::superFastApplyReplace): added
+
+	* freeRemainder.hh (FreeRemainder::fastMatchReplace): only handle
+	fast case and general case (if we're tracing)
+	(FreeRemainder::superFastMatchReplace): added
+
+	* freeNet.cc (FreeNet::buildRemainders): simplified using speed
+	rather than fast
+	(FreeNet::tripleLt): local_inline -> inline
+
+	* freeSymbol.cc (FreeSymbol::compileEquations): use getSpeed()
+	rather than fastHandling
+	(FreeSymbol::generateFinalInstruction): ditto
+	(FreeSymbol::generateInstruction): ditto
+
+	* freeNet.cc (FreeNet::FreeNet): init speed rather than fast
+
+	* freeNet.hh (FreeNet::fastHandling): replaced by getSpeed()
+	(class FreeNet): replaced data member fast by speed
+
+	* freeRemainder.cc (FreeRemainder::FreeRemainder): replace fast
+	with speed
+	(FreeRemainder::dump): replace fast with speed
+
+	* freeRemainder.hh (enum Speed): added
+	(lowest): added
+	(FreeRemainder::fastHandling): replaced by getSpeed()
+	(FreeRemainder::fastMatchReplace)
+	(FreeRemainder::generalMatchReplace)
+	(FreeRemainder::fastCheckAndBind)
+	(FreeRemainder::generalCheckAndBind): use speed rather than fast
+	data member
+
+2026-02-15  Saruman the White  <eker@eker10>
+
+	* freeSymbol.hh (class FreeSymbol): delete decl for eqRewrite()
+
+	* freeSymbol.cc (FreeSymbol::eqRewrite): deleted
+
+	* freeNetExec.cc (FreeNet::applyReplaceFast2): renamed to
+	applyReplaceFast()
+
+	* freeNet.hh (FreeNet::applyReplaceFast): deleted
+
+	* freeSymbol.cc (FreeSymbol::eqRewriteCtorFast): added comment
+	(FreeSymbol::eqRewriteFast): added comment
+	(FreeSymbol::eqRewriteSuperFast): added comment
+
+	* freeNetExec.cc (FreeNet::applyReplaceFast2): use
+	fastMatchReplace()
+
+	* freeSymbol.cc (FreeSymbol::compileEquations): only use
+	eqRewriteSuperFast<>() if discrimination has fastHandling()
+
+	* freeRemainder.hh (class FreeRemainder): added decl for
+	generalMatchReplace()
+
+	* freeNetExec.cc (FreeNet::applyReplaceNoOwise2): use
+	generalMatchReplace() rather than fastMatchReplace()
+	(FreeNet::applyReplaceFast2): ditto
+	(FreeNet::applyReplace2): ditto
+
+	* freeRemainder.hh (FreeRemainder::fastMatchReplace): renamed to
+	generalMatchReplace()
+	(FreeRemainder::fastMatchReplace): don't handle general case
+
+	* freeRemainder.cc (FreeRemainder::slowMatchReplace2):
+	local_inline -> inline
+	(FreeRemainder::slowMatchReplace2): added comment
+	(FreeRemainder::slowMatchReplace): added comment
+
+2026-02-13  Saruman the White  <eker@eker10>
+
+	* freeNetExec.cc (FreeNet::applyReplaceFast2): assume that any
+	symbol whose argument list is stored, has internal storage
+
+	* freeSymbol.cc (FreeSymbol::eqRewriteFast): use applyReplace()
+	instead of applyReplaceFast()
+
+	* freeNet.hh (class FreeNet): added data member freeAndLowArity
+
+	* freeSymbol.cc (FreeSymbol::compileEquations): support
+	eqRewriteSuperFast<>()
+	(FreeSymbol::eqRewriteSuperFast): added function template
+
+	* freeNet.hh (FreeNet::onlyFreeLowAritySymbols): added
+
+	* freeSymbol.hh (FreeSymbol::lowArity): added
+
+	* freeNet.cc (FreeNet::FreeNet): initialize freeAndLowArity
+	(FreeNet::fillOutNode): update freeAndLowArity
+
+2026-02-11  Saruman the White  <eker@eker10>
+
+	* freeSymbol.hh (class FreeSymbol): added decl for function
+	template eqRewriteCtorFast()
+
+	* freeSymbol.cc (FreeSymbol::compileEquations): call
+	setEqRewrite() here
+	(FreeSymbol::FreeSymbol): don't call setEqRewrite() here
+	(FreeSymbol::eqRewriteCtorFast): added function template
+	(FreeSymbol::compileEquations): use eqRewriteCtorFast<>()
+	instantiations
+
+	* freeNullarySymbol.hh (class FreeNullarySymbol): deleted decl for
+	eqRewrite()
+	(class FreeNullarySymbol): deleted data member cached - even
+	having this looks like a bug since we already derive from DagRoot
+
+	* freeNullarySymbol.cc (FreeNullarySymbol::eqRewrite): deleted
+
+	* freeSimpleSymbol.hh: deleted
+
+	* freeSymbol.cc (FreeSymbol::newFreeSymbol): don't use
+	FreeSimpleSymbol<> class template
+
+2026-01-30  Saruman the White  <eker@eker10>
+
+	* freeDagNode.hh (FreeDagNode::getArgument): take Index
+
+2025-01-20  Saruman the White  <eker@eker10>
+
+	* freeSymbol.hh (FreeSymbol::tryEquations): added
+
+2025-01-12  Saruman the White  <eker@eker10>
+
+	* freeSymbol.hh (class FreeSymbol): added decls for
+	eqRewriteFast(), eqRewriteSlow()
+
+	* freeSymbol.cc (FreeSymbol::eqRewriteSlow): added
+	(FreeSymbol::eqRewriteFast): added function template
+	(FreeSymbol::FreeSymbol): call setEqRewrite()
+
+2025-01-05  Saruman the White  <eker@eker10>
+
+	* freeThreeInstructionRhsAutomaton.hh
+	(FreeThreeInstructionRhsAutomaton<n, m, p>::remapIndices): created
+
+	* freeTerm.cc (FreeTerm::compileRhs2): use
+	FreeThreeInstructionRhsAutomaton optimization
+
+2025-01-04  Saruman the White  <eker@eker10>
+
+	* freeTerm.hh (class FreeTerm): updated decl for
+	compileRhsAliens()
+
+	* freeTerm.cc (FreeTerm::compileRhsAliens): don't take arities
+	argument
+	(FreeTerm::compileRhs2): rewritten to use
+	FreeOneInstructionRhsAutomaton
+
+	* freeOneInstructionRhsAutomaton.hh
+	(FreeOneInstructionRhsAutomaton): created from
+	FreeFastRhsAutomaton
+
+	* freeRhsAutomaton.hh (FreeRhsAutomaton::getNrInstructions): added
+	(FreeRhsAutomaton::getArity): added
+
+2025-01-03  Saruman the White  <eker@eker10>
+
+	* freeTerm.cc (FreeTerm::compileRhs2): pass arities to
+	compileRhsAliens() instead of nrFree
+	(FreeTerm::compileRhsAliens): handle arities rather nrFree
+
+	* freeTwoInstructionRhsAutomaton.hh (FreeTwoInstructionAutomaton):
+	created class template
+
+	* freeTheory.hh: deleted forward decls for classes
+	FreeNullaryRhsAutomaton, FreeUnaryRhsAutomaton,
+	FreeBinaryRhsAutomaton, FreeTernaryRhsAutomaton
+
+	* freeDagNode.hh (class FreeDagNode): unfriend
+	FreeUnaryRhsAutomaton, FreeBinaryRhsAutomaton,
+	FreeTernaryRhsAutomaton
+
+	* freeNullaryRhsAutomaton.cc: deleted
+
+	* freeNullaryRhsAutomaton.hh: deleted
+
+	* freeUnaryRhsAutomaton.cc: deleted
+
+	* freeUnaryRhsAutomaton.hh: deleted
+
+	* freeBinaryRhsAutomaton.cc: deleted
+
+	* freeBinaryRhsAutomaton.hh: deleted
+
+	* freeTernaryRhsAutomaton.cc: deleted
+
+	* freeTernaryRhsAutomaton.hh: deleted
+
+	* freeTerm.cc (FreeTerm::compileRhs2): use FreeFastRhsAutomaton
+
+	* freeFastRhsAutomaton.hh (FreeFastRhsAutomaton): created class
+	template
+
+	* freeDagNode.hh (fillArgs): added function template
+
+2024-12-28  Saruman the White  <eker@eker10>
+
+	* freeUnarySymbol.cc: deleted
+
+	* freeUnarySymbol.hh: deleted
+
+	* freeBinarySymbol.cc: deleted
+
+	* freeBinarySymbol.hh: deleted
+
+	* freeTernarySymbol.cc: deleted
+
+	* freeTernarySymbol.hh: deleted
+
+	* freeDagNode.hh (class FreeDagNode): unfriend FreeUnarySymbol,
+	FreeBinarySymbol, FreeTernarySymbol
+
+	* freeSymbol.cc (FreeSymbol::newFreeSymbol): use template class
+	FreeSimpleSymbol
+
+	* freeSimpleSymbol.hh (FreeSimpleSymbol): created
+
+	* freeDagNode.hh (reduceArgs): added compile-time recursive
+	function template
+
 2024-06-05  Steven M. Eker  <eker@eker10>
 
 	* freeFast3RhsAutomaton.cc: fix comment

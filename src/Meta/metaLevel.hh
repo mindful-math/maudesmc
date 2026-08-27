@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -74,6 +74,8 @@ public:
 				 Vector<DagRoot*>& dags,
 				 RewritingContext& context);
 
+  DagNode* upModule(bool flat, ImportModule* m, PointerMap& qidMap, int replacementName);
+
   DagNode* upNat(const mpz_class& nat);
   DagNode* upString(const string& str);
   DagNode* upNoParent() const;
@@ -88,6 +90,7 @@ public:
   DagNode* upKindSet(const Vector<ConnectedComponent*>& kinds, int nrUserKinds);
   DagNode* upSortSet(const Vector<Sort*>& sorts);
   DagNode* upQidList(const Vector<int>& ids);
+  DagNode* upQidList(const Vector<int>& ids, PointerMap& qidMap);
   DagNode* upResultTriple(DagNode* dagNode,
 			  const Substitution& substitution,
 			  const VariableInfo& variableInfo,
@@ -227,8 +230,11 @@ public:
 			       DagNode*& left,
 			       DagNode*& right);
 
-  DagNode* upView(View* view, PointerMap& qidMap);
+  DagNode* upView(View* view, PointerMap& qidMap, int replacementName = NONE);
   DagNode* upModule(bool flat, PreModule* pm, PointerMap& qidMap);
+  DagNode* upModuleExpressionList(const Vector<ImportModule*>& modExprList,
+				  PointerMap& qidMap);
+  DagNode* upViewExpressionList(const Vector<View*>& viewList, PointerMap& qidMap);
   DagNode* upImports(PreModule* pm, PointerMap& qidMap);
   DagNode* upSorts(bool flat, ImportModule* m, PointerMap& qidMap);
   DagNode* upSubsortDecls(bool flat, ImportModule* m, PointerMap& qidMap);
@@ -268,7 +274,8 @@ public:
 				 PointerMap& dagNodeMap);
 
   DagNode* upNarrowingSearchPath(const Vector<DagNode*>& narrowingTrace);
-
+  
+  bool downString(DagNode* arg, Rope& text);
   bool downSignedInt(DagNode* dag, int& number) const;
   bool downBound(DagNode* metaBound, int& bound) const;
   bool downSaturate(DagNode* metaBound, int& bound) const;
@@ -282,10 +289,13 @@ public:
   bool downToken(DagNode* metaQid, Token& token) const;
   bool downOpName(DagNode* metaQid, int& id) const;
   MetaModule* downModule(DagNode* metaModule);
-  View* downView(DagNode* metaView, Interpreter* owner);
+  View* downView(DagNode* metaView, Interpreter* owner, int replacementName = NONE);
   bool downParameterDeclList(DagNode* metaParameterDeclList, MetaView* v);
   bool downParameterDecl(DagNode* metaParameterDecl, MetaView* v);
-  MetaModule* downSignature(DagNode* metaModule, Interpreter* owner);
+  MetaModule* downSignature(DagNode* metaModule,
+			    Interpreter* owner,
+			    ImportModule::Origin origin = ImportModule::TEXT,
+			    int replacementName = NONE);
   bool downHeader(DagNode* metaHeader, int& id, DagNode*& metaParameterDeclList);
   bool downParameterDeclList2(DagNode* metaParameterDeclList, MetaPreModule* pm);
   bool downParameterDecl2(DagNode* metaParameterDecl, MetaPreModule* pm);
@@ -328,7 +338,7 @@ public:
 		     Vector<ConditionFragment*>& condition);
   bool downSimpleSort(DagNode* metaSort, MixfixModule* m, Sort*& sort);
   bool downType(DagNode* metaType, MixfixModule* m, Sort*& type);
-  bool downType2(int id, MixfixModule* m, Sort*& type) const;
+  bool downType2(int id, MixfixModule* m, Sort*& type, bool dontAdvise = false) const;
   bool downQidList(DagNode* metaQidList, Vector<int>& ids);
   bool downQidSet(DagNode* metaQidSet, Vector<int>& ids);
   bool downConcealedSet(DagNode* metaQidSet, PrintSettings& printSettings);
@@ -421,6 +431,7 @@ private:
     Vector<int> gather;
     Vector<int> format;
     int latex = NONE;
+    int rpo = NONE;
     int metadata = NONE;
     DagNode* identity = nullptr;
     DagNode* fixUpInfo = nullptr;
@@ -459,6 +470,11 @@ private:
 			PointerMap& qidMap,
 			PointerMap& dagNodeMap);
 
+
+  DagNode* upHeader(ImportModule* m, PointerMap& qidMap, int replacementName);
+  DagNode* upParameterDecls(ImportModule* m, PointerMap& qidMap);
+  DagNode* upParameterDecl(ImportModule* m, Index index, PointerMap& qidMap);
+
   DagNode* upHeader(bool flat, PreModule* pm, PointerMap& qidMap);
   DagNode* upParameterDecls(PreModule* pm, PointerMap& qidMap);
   DagNode* upParameterDecl(PreModule* pm, int index, PointerMap& qidMap);
@@ -492,7 +508,6 @@ private:
 		      SymbolType st,
 		      Term* identity,
 		      PointerMap& qidMap);
-  DagNode* upQidList(const Vector<int>& ids, PointerMap& qidMap);
   DagNode* upPolymorphSpecial(int index, MixfixModule* m, PointerMap& qidMap);
   DagNode* upIdHook(int purpose, const Vector<int>& items, PointerMap& qidMap);
   DagNode* upOpHook(int purpose, Symbol* op, PointerMap& qidMap);
@@ -502,17 +517,29 @@ private:
 		     MixfixModule* m,
 		     PointerMap& qidMap);
   DagNode* upModuleExpression(const ModuleExpression* e, PointerMap& qidMap);
+  DagNode* upModuleExpressionList(const Vector<ModuleExpression*>& modExprList,
+				  PointerMap& qidMap);
   DagNode* upArguments(const Vector<ViewExpression*>& arguments, PointerMap& qidMap);
   DagNode* upArgument(const ViewExpression* argument, PointerMap& qidMap);
   DagNode* upRenaming(const Renaming* r, PointerMap& qidMap);
+
   DagNode* upTypeSorts(const set<int>& sorts, PointerMap& qidMap);
   DagNode* upRenamingAttributeSet(const Renaming* r, int index, PointerMap& qidMap);
   DagNode* upSortMappings(View* view, PointerMap& qidMap);
   DagNode* upOpMappings(View* view, PointerMap& qidMap);
   DagNode* upStratMappings(View* view, PointerMap& qidMap);
-  DagNode* upHeader(View* view, PointerMap& qidMap);
+  DagNode* upHeader(View* view, PointerMap& qidMap, int replacementName);
   DagNode* upParameterDecls(View* view, PointerMap& qidMap);
   DagNode* upParameterDecl(View* view, int index, PointerMap& qidMap);
+  //
+  //	These up virtual module/view expressions reconstructed from
+  //	ImportModules and Views.
+  //
+  DagNode* upModuleExpression(ImportModule* m, PointerMap& qidMap);
+  DagNode* upArguments(const Vector<Argument*>& arguments, PointerMap& qidMap);
+  DagNode* upArgument(const Argument* argument, PointerMap& qidMap);
+  DagNode* upViewExpression(const View* view, PointerMap& qidMap);
+  DagNode* upImports(ImportModule* m, PointerMap& qidMap);
 
   DagNode* upStratExpr(const StrategyExpression* expr, MixfixModule* m, PointerMap& qidMap);
   DagNode* upCallStrat(int label, Term* callTerm, MixfixModule* m, PointerMap& qidMap);
@@ -546,6 +573,8 @@ private:
   bool downRenamingAttribute(DagNode* metaRenamingAttribute, Renaming* renaming);
 
   ModuleExpression* downModuleExpression(DagNode* metaExpr);
+  bool downModuleExpressionList(DagNode* metaModExprList, Vector<ModuleExpression*>& modExprList);
+  bool downViewExpressionList(DagNode* metaViewExprList, Vector<ViewExpression*>& viewExprList);
   bool downInstantiationArguments(DagNode* metaArguments, Vector<ViewExpression*>& arguments);
   ViewExpression* downViewExpression(DagNode* metaViewExpr);
   bool downInstantiationArgument(DagNode* metaArgument, ViewExpression*& argument);

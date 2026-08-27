@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2003 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -36,6 +36,30 @@ class FreeRemainder : private FreeLhsStructs
   NO_COPYING(FreeRemainder);
 
 public:
+  enum Speed
+    {
+      //
+      //	To qualify for "fast" treatment the associated equation must:
+      //	(1) have a lhs that parses into a non-error sort
+      //	(2) have only free symbols in lhs
+      //	(3) be left linear
+      //	(4) be unconditional
+      //	(5) have no "problem" variables (ones which need their bindings copied to avoid
+      //	    eager evaluation of lazy subterm)
+      //	(6) have the sort of each variable qualify with fastGeqSufficient()
+      //	To qualify for "super-fast", additionally each variable must have a sort that
+      //	is the unique maximal user sort in its component which must be error-free.
+      //
+      //	We pick these values so we can just do a sign check at runtime and
+      //	also for a convenient lowest() function.
+      //
+      SUPER_FAST = -1,
+      SLOW = 0,
+      FAST = 1
+    };
+  
+  static Speed lowest(Speed s1, Speed s2) { return static_cast<Speed>(s1 & s2); }
+
   FreeRemainder(Equation* eqn,
 		const Vector<FreeOccurrence>& freeSymbols,
 		const Vector<FreeOccurrence>& freeVars,
@@ -48,9 +72,15 @@ public:
   FreeRemainder(Equation* eqn);  // trivial FreeRemainder for foreign equations
   ~FreeRemainder();
 
+  bool superFastMatchReplace(DagNode* subject,
+			     RewritingContext& context,
+			     Vector<DagNode**>& stack) const;
   bool fastMatchReplace(DagNode* subject,
 			RewritingContext& context,
 			Vector<DagNode**>& stack) const;
+  bool generalMatchReplace(DagNode* subject,
+			   RewritingContext& context,
+			   Vector<DagNode**>& stack) const;
   bool slowMatchReplace(DagNode* subject,
 			RewritingContext& context,
 			Vector<DagNode**>& stack) const;
@@ -63,7 +93,7 @@ public:
   bool generalCheckAndBind(DagNode** binding, Vector<DagNode**>& stack) const;
   bool slowCheckAndBind(DagNode** binding, Vector<DagNode**>& stack) const;
   Instruction* getFirstInstruction() const;
-  bool fastHandling() const;
+  Speed getSpeed() const;
   
 #ifdef DUMP
   void dump(ostream& s, int indentLevel = 0);
@@ -73,20 +103,9 @@ private:
   bool slowMatchReplace2(DagNode* subject,
 			RewritingContext& context,
 			Vector<DagNode**>& stack) const;
-  //
-  //	To qualify for "fast" treatment the associated equation must:
-  //	(1) have a lhs that parses into a non-error sort
-  //	(2) have only free symbols in lhs
-  //	(3) be left linear
-  //	(4) be unconditional
-  //	(5) have no "problem" variables (ones which need their bindings copied to avoid
-  //	    eager evaluation of lazy subterm)
-  //	(6) have the sort of each variable qualify with fastGeqSufficient()
-  //	To qualify for "super-fast", additionally each variable must have a sort that
-  //	is the unique maximal user sort in its component which must be error-free.
-  //
-  Byte fast;  // > 0 super-fast; < 0 fast; = 0 slow
-  const bool foreign;  // remainder consists of a foreign equation that might collapse into free theory
+  Speed speed;
+  const bool foreign;  // remainder consists of a foreign equation that might collapse
+                       // into the free theory
   Vector<FreeVariable> freeVariables;
   Equation* const equation;  // equation we are a remainder of
   Vector<BoundVariable> boundVariables;
@@ -96,10 +115,10 @@ private:
   //Instruction* firstInstruction;
 };
 
-inline bool
-FreeRemainder::fastHandling() const
+inline FreeRemainder::Speed
+FreeRemainder::getSpeed() const
 {
-  return fast != 0;
+  return speed;
 }
 
 inline bool
@@ -109,33 +128,113 @@ FreeRemainder::isOwise() const
 }
 
 inline bool 
+FreeRemainder::superFastMatchReplace(DagNode* subject,
+				     RewritingContext& context,
+				     Vector<DagNode**>& stack) const
+{
+  if (!(RewritingContext::getTraceStatus()))
+    {
+      if (!freeVariables.isNull())
+	{
+	  const Vector<DagNode**>::const_iterator stackBase = stack.begin();
+	  Vector<FreeVariable>::const_iterator i = freeVariables.begin();
+	  const Vector<FreeVariable>::const_iterator e = freeVariables.end();
+	  do
+	    {
+	      DagNode* d = stackBase[i->position][i->argIndex];
+	      Assert(d->getSortIndex() != Sort::SORT_UNKNOWN, "missing sort information");
+	      context.bind(i->varIndex, d);
+	    }
+	  while (++i != e);
+	}
+      equation->getRhsBuilder().replace(subject, context);
+      context.incrementEqCount();
+      MemoryCell::okToCollectGarbage();
+      return true;
+    }
+  return slowMatchReplace(subject, context, stack);
+}
+
+inline bool 
 FreeRemainder::fastMatchReplace(DagNode* subject,
 				RewritingContext& context,
 				Vector<DagNode**>& stack) const
 {
   if (!(RewritingContext::getTraceStatus()))
     {
-      if (fast > 0)
+      if (!freeVariables.isNull())
 	{
-	  Vector<DagNode**>::const_iterator stackBase = stack.begin();
-	  for (const FreeVariable& i : freeVariables)
+	  const Vector<DagNode**>::const_iterator stackBase = stack.begin();
+	  Vector<FreeVariable>::const_iterator i = freeVariables.begin();
+	  const Vector<FreeVariable>::const_iterator e = freeVariables.end();
+	  do
 	    {
-	      DagNode* d = stackBase[i.position][i.argIndex];
+	      DagNode* d = stackBase[i->position][i->argIndex];
 	      Assert(d->getSortIndex() != Sort::SORT_UNKNOWN, "missing sort information");
-	      context.bind(i.varIndex, d);
-	    }
-	}
-      else if (fast < 0)
-	{
-	  Vector<DagNode**>::const_iterator stackBase = stack.begin();
-	  for (const FreeVariable& i : freeVariables)
-	    {
-	      DagNode* d = stackBase[i.position][i.argIndex];
-	      Assert(d->getSortIndex() != Sort::SORT_UNKNOWN, "missing sort information");
-	      if (d->fastLeq(i.sort))
-		context.bind(i.varIndex, d);
+	      if (d->fastLeq(i->sort))
+		context.bind(i->varIndex, d);
 	      else
 		return false;
+	    }
+ 	  while (++i != e);
+	}
+      equation->getRhsBuilder().replace(subject, context);
+      context.incrementEqCount();
+      MemoryCell::okToCollectGarbage();
+      return true;
+    }
+  return slowMatchReplace(subject, context, stack);
+}
+
+inline bool 
+FreeRemainder::generalMatchReplace(DagNode* subject,
+				   RewritingContext& context,
+				   Vector<DagNode**>& stack) const
+{
+  //
+  //	We handle general case, including the "super-fast" and "fast" cases.
+  //	
+  if (!(RewritingContext::getTraceStatus()))
+    {
+      if (speed < 0)
+	{
+	  //
+	  //	Super-fast case: bind variables without sort check.
+	  //
+	  if (!freeVariables.isNull())
+	    {
+	      Vector<DagNode**>::const_iterator stackBase = stack.begin();
+	      Vector<FreeVariable>::const_iterator i = freeVariables.begin();
+	      const Vector<FreeVariable>::const_iterator e = freeVariables.end();
+	      do
+		{
+		  DagNode* d = stackBase[i->position][i->argIndex];
+		  Assert(d->getSortIndex() != Sort::SORT_UNKNOWN, "missing sort information");
+		  context.bind(i->varIndex, d);
+		}
+	      while (++i != e);
+	    }
+	}
+      else if (speed > 0)
+	{
+	  //
+	  //	Fast case: bind variables after fast sort check.
+	  //
+	  if (!freeVariables.isNull())
+	    {
+	      Vector<DagNode**>::const_iterator stackBase = stack.begin();
+	      Vector<FreeVariable>::const_iterator i = freeVariables.begin();
+	      const Vector<FreeVariable>::const_iterator e = freeVariables.end();
+	      do
+		{
+		  DagNode* d = stackBase[i->position][i->argIndex];
+		  Assert(d->getSortIndex() != Sort::SORT_UNKNOWN, "missing sort information");
+		  if (d->fastLeq(i->sort))
+		    context.bind(i->varIndex, d);
+		  else
+		    return false;
+		}
+	      while (++i != e);
 	    }
 	}
       else
@@ -156,7 +255,7 @@ FreeRemainder::fastCheckAndBind(DagNode** binding, Vector<DagNode**>& stack) con
   //	We only handle the "super-fast" and "fast" cases.
   //
   Vector<DagNode**>::const_iterator stackBase = stack.begin();
-  if (fast > 0)
+  if (speed < 0)
     {
       //
       //	Super-fast case: bind variables without sort check.
@@ -171,7 +270,7 @@ FreeRemainder::fastCheckAndBind(DagNode** binding, Vector<DagNode**>& stack) con
     }
   else
     {
-      Assert(fast < 0, "neither super-fast nor fast case");
+      Assert(speed > 0, "neither super-fast nor fast case");
       //
       //	Fast case: bind variables after fast sort check.
       //
@@ -199,7 +298,7 @@ FreeRemainder::generalCheckAndBind(DagNode** binding, Vector<DagNode**>& stack) 
   //	hence the existence of fastCheckAndBind().
   //
   Vector<DagNode**>::const_iterator stackBase = stack.begin();
-  if (fast > 0)
+  if (speed < 0)
     {
       //
       //	Super-fast case: bind variables without sort check.
@@ -212,7 +311,7 @@ FreeRemainder::generalCheckAndBind(DagNode** binding, Vector<DagNode**>& stack) 
 	  binding[i.varIndex] = d;
 	}
     }
-  else if (fast < 0)
+  else if (speed > 0)
     {
       //
       //	Fast case: bind variables after fast sort check.

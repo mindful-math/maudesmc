@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2003 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -54,16 +54,30 @@ public:
 		       const PatternSet& patternsUsed,
 		       const Vector<int>& slotTranslation);
   //
+  //	Functions to query properties of a FreeNet.
+  //
+  bool emptyNet() const;
+  bool noHighArityFreeSymbols() const;
+  FreeRemainder::Speed getSpeed() const;
+  int getMaxNrRemainders() const;
+  //
   //	Functions to use a FreeNet.
   //
   bool applyReplace(DagNode* subject, RewritingContext& context);
-  bool applyReplaceFast(DagNode* subject, RewritingContext& context);
+  bool lowArityApplyReplace(DagNode* subject, RewritingContext& context);
+  bool fastApplyReplace(DagNode* subject, RewritingContext& context);
+  bool superFastApplyReplace(DagNode* subject, RewritingContext& context);
   bool applyReplaceNoOwise(DagNode* subject, RewritingContext& context);
+  //
+  //	Degenerate cases when the net is empty.
+  //
+  bool generalNullNet(DagNode* subject, RewritingContext& context);
+  bool fastNullNet(DagNode* subject, RewritingContext& context);
+  bool superFastNullNet(DagNode* subject, RewritingContext& context);
   //
   //	For stack machine execution.
   //
   long findRemainderListIndex(DagNode** argumentList);
-  bool fastHandling() const;
 
 #ifdef DUMP
   void dump(ostream& s, int indentLevel = 0);
@@ -111,7 +125,6 @@ private:
 			int argIndex);
   bool moreImportant(Symbol* first, Symbol* second);
   bool applyReplace2(DagNode* subject, RewritingContext& context);
-  bool applyReplaceFast2(DagNode* subject, RewritingContext& context);
   bool applyReplaceNoOwise2(DagNode* subject, RewritingContext& context);
 
   Vector<DagNode**> stack;
@@ -119,7 +132,9 @@ private:
   Vector<Vector<FreeRemainder*> > fastApplicable;
   Vector<FreeRemainder*> remainders;
   Vector<PatternSet> applicable;
-  bool fast;
+  FreeRemainder::Speed speed;
+  int maxNrRemainders;
+  bool alienOrLowArity;
 
   friend class FreeInstruction;
   friend class FreeGeneralExtor;
@@ -133,21 +148,33 @@ FreeNet::applyReplace(DagNode* subject, RewritingContext& context)
 }
 
 inline bool
-FreeNet::applyReplaceFast(DagNode* subject, RewritingContext& context)
-{
-  return !applicable.isNull() ? applyReplaceFast2(subject, context) : false;
-}
-
-inline bool
 FreeNet::applyReplaceNoOwise(DagNode* subject, RewritingContext& context)
 {
   return !applicable.isNull() ? applyReplaceNoOwise2(subject, context) : false;
 }
 
 inline bool
-FreeNet::fastHandling() const
+FreeNet::emptyNet() const
 {
-  return fast;
+  return net.isNull();
+}
+
+inline FreeRemainder::Speed
+FreeNet::getSpeed() const
+{
+  return speed;
+}
+
+inline int
+FreeNet::getMaxNrRemainders() const
+{
+  return maxNrRemainders;
+}
+
+inline bool
+FreeNet::noHighArityFreeSymbols() const
+{
+  return alienOrLowArity;
 }
 
 #endif

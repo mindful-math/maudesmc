@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 2018-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 2018-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -21,7 +21,10 @@
 */
 
 MetaModule*
-MetaLevel::downSignature(DagNode* metaModule, Interpreter* owner)
+MetaLevel::downSignature(DagNode* metaModule,
+			 Interpreter* owner,
+			 ImportModule::Origin origin,
+			 int replacementName)
 {
   //
   //	This functionality is intended for use by the meta-interpreter rather
@@ -30,8 +33,8 @@ MetaLevel::downSignature(DagNode* metaModule, Interpreter* owner)
   //	(1) Don't use the metalevel cache, since will it hold modules created by the functional
   //	metalevel which can have the same meta-syntax but different semantics as modules
   //	pulled down in a meta-interpreter because of different imports with the same name.
-  //	(2) Don't do statement imports and module compilation, since this work may
-  //	not be needed if a module is being inserted but not being rewritten in.
+  //	(2) Don't do statement and strategy definition imports and module compilation, since
+  //	this work may not be needed if a module is being inserted but not being rewritten in.
   //
   Symbol* ms = metaModule->symbol();
 
@@ -56,7 +59,10 @@ MetaLevel::downSignature(DagNode* metaModule, Interpreter* owner)
   DagNode* metaParameterDeclList;
   if (downHeader(f->getArgument(0), id, metaParameterDeclList))
     {
-      MetaModule* m = new MetaModule(id, mt, owner);
+      owner->protectCaches();
+      if (replacementName != NONE)
+	id = replacementName;
+      MetaModule* m = new MetaModule(id, mt, origin, owner);
       if (downParameterDeclList(metaParameterDeclList, m) &&
 	  downImports(f->getArgument(1), m))
 	{
@@ -90,6 +96,12 @@ MetaLevel::downSignature(DagNode* metaModule, Interpreter* owner)
 				  m->registerRuleLabels();
 				  m->localStatementsComplete();
 				  m->resetImports();
+				  //
+				  //	We shouldn't have produced any unused modules
+				  //	or views, but we still need to allow garbage
+				  //	collection of the module and view caches.
+				  //
+				  owner->unprotectCaches();
 				  return m;
 				}
 			    }
@@ -109,14 +121,13 @@ MetaLevel::downSignature(DagNode* metaModule, Interpreter* owner)
       //
       m->deepSelfDestruct();
       //
-      //	Pulling down module expressions may have resulted in
-      //	the creation of cached modules that no longer have
-      //	dependents now that we failed to build the metamodule.
-      //	Thus we now need to tidy the module and view caches.
+      //	We failed to build so we no longer need to protect the caches
+      //	and we might trigger a garbage collect of them to remove any
+      //	unused modules and views we created during failure.
       //	
-      owner->cleanCaches();
+      owner->unprotectCaches();
     }
-  return 0;
+  return nullptr;
 }
 
 bool

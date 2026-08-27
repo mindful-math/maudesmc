@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -55,14 +55,18 @@ FreePreNet::semiCompileNode(FreeNet& freeNet, int nodeNr, const SlotMap& slotMap
       Vector<Symbol*> symbols(nrMatchArcs);
       Vector<int> targets(nrMatchArcs);
       Vector<int> saveSlots(nrMatchArcs);
-     
+
       for (int i = 0; i < nrMatchArcs; i++)
 	{
 	  Symbol* symbol = n.sons[i].label;
 	  int target = n.sons[i].target;
 	  Assert(symbol != 0, "null symbol");
 	  symbols[i] = symbol;
-	  if (dynamic_cast<FreeSymbol*>(symbol) != 0 && symbol->arity() > 0)
+	  //
+	  //	We only store a pointer to an argument list for free function
+	  //	symbols that aren't constants.
+	  //
+	  if (dynamic_cast<FreeSymbol*>(symbol) != nullptr)
 	    {
 	      int slot = allocateSlot(netVec[target]->first.liveSet, testPosition, symbol);
 	      SlotMap newMap(slotMap);

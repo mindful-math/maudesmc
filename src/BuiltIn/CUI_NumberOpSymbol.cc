@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2003 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -110,30 +110,38 @@ CUI_NumberOpSymbol::getSymbolAttachments(Vector<const char*>& purposes,
   CUI_Symbol::getSymbolAttachments(purposes, symbols);
 }
 
-bool
-CUI_NumberOpSymbol::eqRewrite(DagNode* subject, RewritingContext& context)
+void
+CUI_NumberOpSymbol::compileEquations()
 {
-  Assert(this == subject->symbol(), "bad symbol");
+  CUI_Symbol::compileEquations();
+  setEqRewrite(&CUI_NumberOpSymbol::eqRewrite);
+}
+
+bool
+CUI_NumberOpSymbol::eqRewrite(Symbol* symbol, DagNode* subject, RewritingContext& context)
+{
+  Assert(symbol == subject->symbol(), "bad symbol");
+  CUI_NumberOpSymbol* s = safeCastNonNull<CUI_NumberOpSymbol*>(symbol);
+  //
+  //	Evaluate our arguments.
+  //
   CUI_DagNode* d = safeCast(CUI_DagNode*, subject);
-  bool specialEval = true;
-  //
-  //	Evaluate our arguments and check that they are both numbers.
-  //
-  for (int i = 0; i < 2; i++)
+  DagNode* d0 = d->getArgument(0);
+  d0->reduce(context);
+  DagNode* d1 = d->getArgument(1);
+  d1->reduce(context);
+
+  if (s->succSymbol != nullptr && s->succSymbol->isNat(d0) && s->succSymbol->isNat(d1))
     {
-      DagNode* a = d->getArgument(i);
-      a->reduce(context);
-      if (!(succSymbol != 0 && succSymbol->isNat(a)))
-	specialEval = false;
-    }
-  if (specialEval)
-    {
-      const mpz_class& a0 = succSymbol->getNat(d->getArgument(0));
-      const mpz_class& a1 = succSymbol->getNat(d->getArgument(1));
+      //
+      //	Both arguments are natural numbers so we can exectute our special semmantics.
+      //
+      const mpz_class& a0 = s->succSymbol->getNat(d->getArgument(0));
+      const mpz_class& a1 = s->succSymbol->getNat(d->getArgument(1));
       mpz_class r;
-      switch (op)
+      switch (s->op)
 	{
-	case CODE('s', 'd'):
+	case CODE('s', 'd'):  // currently we only support symmetric difference
 	  {
 	    r = abs(a0 - a1);
 	    break;
@@ -141,7 +149,7 @@ CUI_NumberOpSymbol::eqRewrite(DagNode* subject, RewritingContext& context)
 	default:
 	  CantHappen("bad number op");
 	}
-      return succSymbol->rewriteToNat(subject, context, r);
+      return s->succSymbol->rewriteToNat(subject, context, r);
     }
-  return CUI_Symbol::eqRewrite(subject, context);
+  return s->normalizeAndTryEquations(subject, context);
 }

@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2024 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -43,7 +43,6 @@ public:
   DagNode* makeDagNode(const Vector<DagNode*>& args);
   void computeBaseSort(DagNode* subject);
   void normalizeAndComputeTrueSort(DagNode* subject, RewritingContext& context);
-  bool eqRewrite(DagNode* subject, RewritingContext& context);
   DagNode* ruleRewrite(DagNode* subject, RewritingContext& context);
   void stackArguments(DagNode* subject,
 		      Vector<RedexPosition>& stack,
@@ -93,6 +92,10 @@ public:
   DagNode* makeCanonicalCopy(DagNode* original, HashConsSet* hcs);
 
 private:
+  static bool eqRewriteCtor(Symbol* symbol, DagNode* subject, RewritingContext& context);
+  static bool eqRewriteStandardStrategy(Symbol* symbol, DagNode* subject, RewritingContext& context);
+  static bool eqRewriteComplexStrategy(Symbol* symbol, DagNode* subject, RewritingContext& context);
+
   bool rewriteAtTop(AU_DagNode* subject, RewritingContext& context);
   bool rewriteAtTopNoOwise(AU_DagNode* subject, RewritingContext& context);
   bool complexStrategy(AU_DagNode* subject, RewritingContext& context);

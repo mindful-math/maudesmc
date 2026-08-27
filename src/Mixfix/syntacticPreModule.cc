@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -120,6 +120,8 @@ SyntacticPreModule::SyntacticPreModule(Token startToken, Token moduleName, Inter
     moduleType = MixfixModule::STRATEGY_MODULE;
   else if (startTokenCode == omod)
     moduleType = MixfixModule::OBJECT_ORIENTED_MODULE;
+  else if (startTokenCode == make)
+    moduleType = MixfixModule::MAKE_STATEMENT;
   setModuleType(moduleType);
 
   lastSawOpDecl = false;
@@ -152,24 +154,27 @@ SyntacticPreModule::getFlatModule()
   //	getFlatSignature() returns a module with its bad flag
   //	set if anything went wrong.
   //
-  if (!(m->isBad()) && m->getStatus() < Module::THEORY_CLOSED)
+  if (m != nullptr)
     {
-      //
-      //	Need to flatten in statements and compile.
-      //
-      m->importStatements();
-      Assert(!(m->isBad()), "importStatements() unexpectedly set bad flag in " << *m);
-      m->resetImports();
-      //
-      //	Compile  module.
-      //
-      m->closeTheory();
-      //
-      //	We don't allow reserved fresh variable names in variant
-      //	equations or narrowing rules. We can't do this until statements
-      //	have been compiled since it relied on VariableInfo being filled out.
-      //
-      m->checkFreshVariableNames();
+      if (!(m->isBad()) && m->getStatus() < Module::THEORY_CLOSED)
+	{
+	  //
+	  //	Need to flatten in statements and compile.
+	  //
+	  m->importStatements();
+	  Assert(!(m->isBad()), "importStatements() unexpectedly set bad flag in " << *m);
+	  m->resetImports();
+	  //
+	  //	Compile  module.
+	  //
+	  m->closeTheory();
+	  //
+	  //	We don't allow reserved fresh variable names in variant
+	  //	equations or narrowing rules. We can't do this until statements
+	  //	have been compiled since it relied on VariableInfo being filled out.
+	  //
+	  m->checkFreshVariableNames();
+	}
     }
   return m;
 }
@@ -186,7 +191,7 @@ SyntacticPreModule::getFlatSignature()
   else if (flatModule->getStatus() == Module::OPEN)
     {
       DebugNew("module " << this << " had flatModule status open");
-      return 0;  // we must already be in the middle of processing this module
+      return nullptr;  // we must already be in the middle of processing this module
     }
   return flatModule;
 }
@@ -210,6 +215,8 @@ SyntacticPreModule::compatible(int endTokenCode)
     return endTokenCode == endsm;
   if (startTokenCode == omod)
     return endTokenCode == endom;
+  if (startTokenCode == make)
+    return endTokenCode == endm;
   //
   //	OBJ backward compatibility.
   //
@@ -225,7 +232,10 @@ SyntacticPreModule::finishModule(Token endToken)
 		   QUOTE(Token::name(startTokenCode)) << " ends with "
 		   << QUOTE(endToken) << '.');
     }
-  if (!isTheory())
+  //
+  //	Theories and make statements don't get automatic imports.
+  //
+  if (!isTheory() && getModuleType() != MixfixModule::MAKE_STATEMENT)
     autoImports = getOwner()->getAutoImports(); // deep copy
   if (MixfixModule::isObjectOriented(getModuleType()))
     {
@@ -237,16 +247,18 @@ SyntacticPreModule::finishModule(Token endToken)
 	autoImports.insert(i);
     }
   isCompleteFlag = true;
-  bool displacedModule = getOwner()->insertModule(id(), this);
+  if (getOwner()->databasesLocked())
+    {
+      IssueWarning(LineNumber(endToken.lineNumber()) <<
+		   ": module database locked during module expression evaluation.");
+      getOwner()->setCurrentModule(nullptr);
+      delete this;
+      return;
+    }
+  (void) getOwner()->insertModule(id(), this);
+  getOwner()->protectCaches();
   process();
-  //
-  //	If we displaced a module, modules and views constructed for the
-  //	displaced module could have been orphaned. The orphans could
-  //	have been picked up by the new module, but now the module system
-  //	is quiescent we can purge orphans from the module and view caches.
-  //
-  if (displacedModule)
-    getOwner()->cleanCaches();
+  getOwner()->unprotectCaches();
 }
 
 void

@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ moduleExprDot	:	tokenBarDot expectedDot
 		|	parenExpr expectedDot
 		|	renameExpr expectedDot
 		|	instantExpr expectedDot
+		|	transformExpr expectedDot
 		|	moduleExpr '+' moduleExprDot
 			{
 			  if ($3)
@@ -65,13 +66,16 @@ moduleExpr2	:	moduleExpr3
 		|	renameExpr
 		;
 
-moduleExpr3	:	parenExpr
+moduleExpr3	:	moduleExpr4
 		|	instantExpr
+		|	transformExpr	
+		;
+
+moduleExpr4	:	parenExpr
 		|	token
 		        {
                           $$ = new ModuleExpression($1);
-                        }
-
+                        }	
 		;
 		
 renameExpr	:	moduleExpr2 '*' renaming
@@ -87,10 +91,82 @@ instantExpr	:	moduleExpr3 '{' instantArgs '}'
 			  delete $3;
 			}
 		;
-
+		
 parenExpr	:	'(' moduleExpr ')'
 			{
 			  $$ = $2;
+			}
+		;
+
+/*
+ *	User-defined module transformations.
+ */
+transformExpr	:	token transInput optTransOptions optInputViews
+			{
+			  $$ = new ModuleExpression($1, *$2, *$3, *$4);
+			  delete $2;
+			  delete $3;
+			  delete $4;
+			}
+		|	token transOptions optInputViews
+			{
+			  Vector<ModuleExpression*> empty;
+			  $$ = new ModuleExpression($1, empty, *$2, *$3);
+			  delete $2;
+			  delete $3;
+			}
+		;
+
+transInput	:	'[' moduleExprList ']'
+			{
+			  $$ = $2;
+			}
+		;
+
+optTransOptions	:	transOptions
+			{
+			  $$ = $1;
+			}
+		|
+			{
+			  $$ = new Vector<int>;
+			}
+		;
+
+transOptions	:	'('
+			{
+			  lexBubble(BAR_RIGHT_PAREN, 0);
+			}
+			')'
+			{
+			  Vector<int>* options = new Vector<int>;
+			  for (Token t : lexerBubble)
+			    options->push_back(t.code());
+			  $$ = options;
+			}
+
+		;
+
+moduleExprList	:	moduleExprList ',' moduleExpr
+			{
+			  $1->append($3);
+			  $$ = $1;
+			}
+		|	moduleExpr
+			{
+			  Vector<ModuleExpression*>* l =  new Vector<ModuleExpression*>;
+			  l->append($1);
+			  $$ = l;
+			}
+		;
+
+optInputViews	:	'[' instantArgs ']'
+			{
+			  $$ = $2;
+			}
+		|
+			{
+			  $$ = new Vector<ViewExpression*>;
 			}
 		;
 
@@ -106,6 +182,20 @@ viewExpr	:	viewExpr '{' instantArgs '}'
 			{
 			  $$ = new ViewExpression($1);
 			}
+		|	token transInput optTransOptions optInputViews
+			{
+			  $$ = new ViewExpression($1, *$2, *$3, *$4);
+			  delete $2;
+			  delete $3;
+			  delete $4;
+			}
+		|	token transOptions optInputViews
+			{
+			  Vector<ModuleExpression*> empty;
+			  $$ = new ViewExpression($1, empty, *$2, *$3);
+			  delete $2;
+			  delete $3;
+			}
 		;
 
 instantArgs	:	instantArgs ',' viewExpr
@@ -115,7 +205,7 @@ instantArgs	:	instantArgs ',' viewExpr
 			}
 		|	viewExpr
 			{
-			  Vector<ViewExpression*>* t =  new Vector<ViewExpression*>();
+			  Vector<ViewExpression*>* t =  new Vector<ViewExpression*>;
 			  t->append($1);
 			  $$ = t;
 			}
@@ -226,6 +316,8 @@ toAttribute	:	KW_PREC IDENTIFIER	{ currentRenaming->setPrec($2); }
 		|	KW_LATEX '('		{ lexerLatexMode(); }
 			LATEX_STRING ')'	{ currentRenaming->setLatexMacro($4); }
 		|	KW_LATEX     		{ IssueWarning(&($1) << ": latex attribute without latex code in operator mapping."); }
+		|	KW_RPO IDENTIFIER	{ currentRenaming->setRpo($2); }
+		|	KW_RPO			{ IssueWarning(&($1) << ": rpo attribute without value in operator mapping."); }
 		;
 
 /*
@@ -246,10 +338,20 @@ view		:	KW_VIEW			{ lexerIdMode(); }
 			  CV->addTo($9);
 			  lexerInitialMode();
 			  fileTable.endModule(lineNumber);
-			  bool displacedView = interpreter.insertView(($3).code(), CV);
-			  CV->finishView();
-			  if (displacedView)
-			    interpreter.cleanCaches();
+			  if (interpreter.databasesLocked())
+			    {
+			      IssueWarning(LineNumber($12.lineNumber()) <<
+		                ": view database locked during module expression evaluation.");
+                              delete CV;
+                              interpreter.setCurrentView(nullptr);
+			    }
+			  else
+			    {
+			      (void) interpreter.insertView(($3).code(), CV);
+			      interpreter.protectCaches();
+			      CV->finishView();
+			      interpreter.unprotectCaches();
+			    }
 			}
 		;
 
@@ -489,6 +591,26 @@ module		:	KW_MOD		{ lexerIdMode(); }
 			{
 			  lexerInitialMode();
 			  fileTable.endModule(lineNumber);
+			  CM->finishModule($8);
+			}
+		|	KW_MAKE		{ lexerIdMode(); }
+			token
+			{
+			  interpreter.setCurrentModule(new SyntacticPreModule($1, $3, &interpreter));
+			  currentSyntaxContainer = CM;
+			  fileTable.beginModule($1, $3);
+			}
+			/*
+			 *	Can't overparse with expectingIs here because module
+			 *	expression could start with "is".
+			 */
+			parameters KW_IS moduleExpr KW_ENDM
+			{
+			  lexerInitialMode();
+			  fileTable.endModule(lineNumber);
+			  Token importMode;
+			  importMode.tokenize("including", lineNumber);
+			  CM->addImport(importMode, $7);
 			  CM->finishModule($8);
 			}
 		;
@@ -918,6 +1040,8 @@ attribute	:	KW_ASSOC
 			{
 			  CM->setFlag(SymbolType::PCONST);
 			}
+		|	KW_RPO IDENTIFIER	{ CM->setRpo($2); }
+		|	KW_RPO			{ IssueWarning(&($1) << ": rpo attribute without value in operator declaration."); }
 		;
 
 /*
@@ -1057,7 +1181,7 @@ sortToken	:	IDENTIFIER
 		|	KW_PREC | KW_GATHER | KW_ASTRAT | KW_POLY | KW_MEMO | KW_CTOR
 		|	KW_LATEX | KW_SPECIAL | KW_FROZEN | KW_METADATA
 		|	KW_CONFIG | KW_OBJ | KW_DITTO | KW_FORMAT
-		|	KW_ID_HOOK | KW_OP_HOOK | KW_TERM_HOOK | KW_PCONST
+		|	KW_ID_HOOK | KW_OP_HOOK | KW_TERM_HOOK | KW_PCONST | KW_RPO
 		
 		|	'=' | '|' | '+' | '*' |	KW_ARROW2
 		;

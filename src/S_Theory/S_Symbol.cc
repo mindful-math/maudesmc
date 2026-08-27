@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2024 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -48,6 +48,7 @@ S_Symbol::S_Symbol(int id, const Vector<int>& strategy, bool memoFlag)
   : Symbol(id, 1, memoFlag)
 {
   setStrategy(strategy, 1, memoFlag);
+  setEqRewrite(standardStrategy() ? &eqRewriteStandardStrategy : &eqRewriteComplexStrategy);
 }
 
 void 
@@ -134,39 +135,61 @@ S_Symbol::makeDagNode(const Vector<DagNode*>& args)
   return new S_DagNode(this, 1, args[0]);
 }
 
-bool
-S_Symbol::eqRewrite(DagNode* subject, RewritingContext& context)
+void
+S_Symbol::compileEquations()
 {
-  Assert(this == subject->symbol(), "bad symbol");
-  S_DagNode* s = safeCast(S_DagNode*, subject);
-  if (standardStrategy())
-    {
-      //
-      //	Fast eager strategy case.
-      //
-      s->arg->reduce(context);
-      s->normalizeAtTop();  // always needed because shared node may have rewritten
-      if (equationFree())
-	return false;
-      S_ExtensionInfo extensionInfo(s);
-      return applyReplace(subject, context, &extensionInfo);
-    }
-  if (isMemoized())
+  Symbol::compileEquations();
+  //
+  //	We split on strategy and the existence of equations.
+  //
+  setEqRewrite(standardStrategy() ?
+	       (equationFree() ? &eqRewriteCtor : &eqRewriteStandardStrategy) :
+	       &eqRewriteComplexStrategy);
+}
+
+bool
+S_Symbol::eqRewriteCtor(Symbol* symbol, DagNode* subject, RewritingContext& context)
+{
+  Assert(symbol == subject->symbol(), "bad symbol");
+  S_DagNode* d = static_cast<S_DagNode*>(subject);
+  d->arg->reduce(context);
+  d->normalizeAtTop();  // always needed because shared node may have rewritten
+  return false;
+}
+
+bool
+S_Symbol::eqRewriteStandardStrategy(Symbol* symbol, DagNode* subject, RewritingContext& context)
+{
+  Assert(symbol == subject->symbol(), "bad symbol");
+  S_DagNode* d = static_cast<S_DagNode*>(subject);
+  d->arg->reduce(context);
+  d->normalizeAtTop();  // always needed because shared node may have rewritten
+  S_ExtensionInfo extensionInfo(d);
+  return safeCastNonNull<S_Symbol*>(symbol)->applyReplace(subject, context, &extensionInfo);
+}
+
+bool
+S_Symbol::eqRewriteComplexStrategy(Symbol* symbol, DagNode* subject, RewritingContext& context)
+{
+  Assert(symbol == subject->symbol(), "bad symbol");
+  S_Symbol* s = safeCastNonNull<S_Symbol*>(symbol);
+  if (s->isMemoized())
     {
       //
       //	Memoized case - get the reduced form and enter
       //	it in the memoization table.
       //
       MemoTable::SourceSet from;
-      memoStrategy(from, subject, context);
-      memoEnter(from, subject);
+      s->memoStrategy(from, subject, context);
+      s->memoEnter(from, subject);
       return false;
     }
   //
   //	Complex strategy case.
   //
-  S_ExtensionInfo extensionInfo(s);
-  const Vector<int>& userStrategy = getStrategy();
+  S_DagNode* d = static_cast<S_DagNode*>(subject);
+  S_ExtensionInfo extensionInfo(d);
+  const Vector<int>& userStrategy = s->getStrategy();
   int stratLen = userStrategy.length();
   bool seenZero = false;
 
@@ -176,20 +199,20 @@ S_Symbol::eqRewrite(DagNode* subject, RewritingContext& context)
 	{
 	  if (!seenZero)
 	    {
-	      s->arg->computeTrueSort(context);
+	      d->arg->computeTrueSort(context);
 	      seenZero = true;
 	    }
-	  s->normalizeAtTop();
+	  d->normalizeAtTop();
 	  if ((i + 1 == stratLen) ?
-	      applyReplace(subject, context, &extensionInfo) :
-	      applyReplaceNoOwise(subject, context, &extensionInfo))
+	      s->applyReplace(subject, context, &extensionInfo) :
+	      s->applyReplaceNoOwise(subject, context, &extensionInfo))
 	      return true;
 	}
       else
 	{
 	  if (seenZero)
 	    {
-	      s->arg->copyReducible();
+	      d->arg->copyReducible();
 	      //
 	      //	A previous call to applyReplace() may have
 	      //	computed a true sort for our subject which will be
@@ -197,7 +220,7 @@ S_Symbol::eqRewrite(DagNode* subject, RewritingContext& context)
 	      //
 	      subject->repudiateSortInfo();
 	    }
-	  s->arg->reduce(context);
+	  d->arg->reduce(context);
 	}
     }
   return false;

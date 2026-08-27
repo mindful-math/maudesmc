@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2024 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -190,30 +190,60 @@ ACU_Symbol::reduceArgumentsAndNormalize(DagNode* subject, RewritingContext& cont
   return false;
 }
 
-bool
-ACU_Symbol::eqRewrite(DagNode* subject, RewritingContext& context)
+void
+ACU_Symbol::compileEquations()
 {
-  Assert(this == subject->symbol(), "bad symbol");
-  if (standardStrategy())
+  AssociativeSymbol::compileEquations();
+  setEqRewrite(standardStrategy() ?
+	       (equationFree() ? &eqRewriteCtor : &eqRewriteStandardStrategy) :
+	       &eqRewriteComplexStrategy);
+}
+
+bool
+ACU_Symbol::eqRewriteCtor(Symbol* symbol, DagNode* subject, RewritingContext& context)
+{
+  Assert(symbol == subject->symbol(), "bad symbol");
+  if (static_cast<ACU_BaseDagNode*>(subject)->isFresh())
     {
-      if (safeCast(ACU_BaseDagNode*, subject)->isFresh())
-	{
-	  ACU_DagNode* s = safeCast(ACU_DagNode*, subject);
-	  int nrArgs = s->argArray.length();
-          for (int i = 0; i < nrArgs; i++)
-            s->argArray[i].dagNode->reduce(context);
-	  //
-	  //	We always need to renormalize at the top because
-	  //	shared subterms may have rewritten.
-	  //
-	  if (s->normalizeAtTop())
-	    return false;
-	}
-      if (equationFree())
-	return false;
-      return rewriteAtTop(subject, context);
+      ACU_DagNode* d = static_cast<ACU_DagNode*>(subject);
+      Index nrArgs = d->argArray.size();
+      for (Index i = 0; i < nrArgs; ++i)
+	d->argArray[i].dagNode->reduce(context);
+      //
+      //	We always need to renormalize at the top because
+      //	shared subterms may have rewritten.
+      //
+      (void) d->normalizeAtTop();
     }
-  return complexStrategy(subject, context);
+  return false;
+}
+
+bool
+ACU_Symbol::eqRewriteStandardStrategy(Symbol* symbol, DagNode* subject, RewritingContext& context)
+{
+  Assert(symbol == subject->symbol(), "bad symbol");
+  if (static_cast<ACU_BaseDagNode*>(subject)->isFresh())
+    {
+      ACU_DagNode* d = static_cast<ACU_DagNode*>(subject);
+      Index nrArgs = d->argArray.size();
+      for (Index i = 0; i < nrArgs; ++i)
+	d->argArray[i].dagNode->reduce(context);
+      //
+      //	We always need to renormalize at the top because
+      //	shared subterms may have rewritten.
+      //
+      if (d->normalizeAtTop())
+	return false;
+    }
+  return safeCastNonNull<ACU_Symbol*>(symbol)->rewriteAtTop(subject, context);
+}
+
+bool
+ACU_Symbol::eqRewriteComplexStrategy(Symbol* symbol, DagNode* subject, RewritingContext& context)
+{
+  Assert(symbol == subject->symbol(), "bad symbol");
+  ACU_Symbol* s = safeCastNonNull<ACU_Symbol*>(symbol);
+  return s->complexStrategy(subject, context);  // inline this eventually
 }
 
 bool

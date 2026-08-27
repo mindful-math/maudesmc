@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2024 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,7 +29,7 @@ MixfixModule::makeGrammar(bool complexFlag)
 {
   DebugInfo("module = " << this << " (" << ((void*) this) << ")" <<
 	      "  complexFlag = " << complexFlag << "  parser = " << parser);
-  if (parser != 0)
+  if (parser != nullptr)
     {
       if (!complexFlag || parser->isComplex())
 	{
@@ -128,7 +128,7 @@ MixfixModule::makeParameterizedSortProductions()
 	      Vector<int> rhs(1);
 	      rhs[0] = t;
 	      parser->insertProduction(nt, rhs, 0, emptyGather);
-	      parser->insertVariableTerminal(lead, t);
+	      parser->insertLeadTerminal(lead, t);
 	    }
 	}
     }
@@ -684,7 +684,7 @@ MixfixModule::makeAttributeProductions()
   rhs[0] = STRING_NT;
   parser->insertProduction(PRINT_ITEM, rhs, 0, gatherAny, MixfixParser::MAKE_STRING);
   rhs[0] = VARIABLE;
-  parser->insertProduction(PRINT_ITEM, rhs, 0, gatherAny, MixfixParser::MAKE_VARIABLE);
+  parser->insertProduction(PRINT_ITEM, rhs, 0, gatherAny, MixfixParser::MAKE_PRINT_VARIABLE);
   //
   //	Print lists.
   //
@@ -892,8 +892,33 @@ MixfixModule::makeComponentProductions()
       int assocListNt = nonTerminal(i, ASSOC_LIST_TYPE);
       int sortListNt = nonTerminal(i, SORT_LIST_TYPE);
       const ConnectedComponent* component = components[i];
+      {
+	//
+	//	For each component, we make a terminal that will be used
+	//	to map unseen variables having a sort from the component,
+	//	if they doesn't have a more specific mapping.
+	//
+	Sort* kind = component->sort(Sort::KIND);
+	string kindName(Token::name(kind->id()));
+	int t = Token::encode((kindName + " kind terminal").c_str());
+	parser->insertComponentTerminal(i, t);
+	DebugInfo("inserted component terminal " << t << " for component " << component);
+	rhsOne[0] = t;
+	parser->insertProduction(termNt, rhsOne, 0, emptyGather, MixfixParser::MAKE_OTF_VARIABLE);
+	parser->insertProduction(VARIABLE, rhsOne, 0, emptyGather, MixfixParser::MAKE_OTF_VARIABLE);
+	//
+	//	Syntax for on-the-fly kind variable:
+	//	<FooTerm> ::= <ENDS_IN_COLON> [ <FooSortList> ]
+	//
+	rhsKindVariable[2] = sortListNt;
+	int kindIndex = kind->getIndexWithinModule();
+	parser->insertProduction(termNt, rhsKindVariable, 0, gatherAnyAny,
+				 MixfixParser::MAKE_OTF_VARIABLE_KNOWN_SORT, kindIndex);
+	parser->insertProduction(VARIABLE, rhsKindVariable, 0, gatherAnyAny,
+				 MixfixParser::MAKE_OTF_VARIABLE_KNOWN_SORT, kindIndex);
+      }
       int nrSorts = component->nrSorts();
-      for (int j = 1; j < nrSorts; j++)  // skip error sort
+      for (int j = 1; j < nrSorts; ++j)  // skip error sort
 	{
 	  const Sort* sort = component->sort(j);
 	  int sortNameCode = sort->id();
@@ -917,13 +942,13 @@ MixfixModule::makeComponentProductions()
 	      parts[0] = Token::dotNameCode(lead);
 	      parser->insertProduction(dotSortNt, parts, 0, emptyGather);
 	      //
-	      //	Syntax for unseen variable of multitoken sort.
+	      //	Syntax for on-the-fly  variable of structured sort.
 	      //
 	      parts[0] = leadTokens[lead];  // nonterminal
 	      parser->insertProduction(termNt, parts, 0, gatherAny,
-				       MixfixParser::MAKE_VARIABLE, sortIndex);
+				       MixfixParser::MAKE_OTF_VARIABLE_KNOWN_SORT, sortIndex);
 	      parser->insertProduction(VARIABLE, parts, 0, gatherAny,
-				       MixfixParser::MAKE_VARIABLE, sortIndex);
+				       MixfixParser::MAKE_OTF_VARIABLE_KNOWN_SORT, sortIndex);
 	    }
 	  //
 	  //	Syntax for yet unseen variables of our sort.
@@ -931,34 +956,31 @@ MixfixModule::makeComponentProductions()
 	  IntMap::const_iterator p = leadTokens.find(sortNameCode);
 	  if (p != leadTokens.end())
 	    {
+	      //
+	      //	This means our sort looks like Foo and Foo is a lead
+	      //	token because we have at least one sort Foo{...}
+	      //	Thus we already have a nonterminal and terminal for Foo
+	      //	with
+	      //	  <nonterminal> ::= terminal
+	      //	We use the nonterminal for on-the-fly variables
+	      //	  <FooTerm> ::= nonterminal
+	      //	so we can handle X:Foo where X:Foo is part of the user's
+	      //	syntax by adding a production
+	      //	  <nonterminal> ::= X:Foo
+	      //	in makeSpecialProductions()
+	      //	The point of having a nonterminal, is that it is used to
+	      //	parse X:Foo{...} whether the X:Foo in a new token or
+	      //	part of the user's syntax with its own mapping.
+	      //	Tokens like Y:Foo without a mapping will be mapped to
+	      //	a component terminal.
+	      //
 	      rhsOne[0] = p->second;
 	      parser->insertProduction(termNt, rhsOne, 0, gatherAny,
-				       MixfixParser::MAKE_VARIABLE, sortIndex);
+				       MixfixParser::MAKE_OTF_VARIABLE_KNOWN_SORT, sortIndex);
 	      parser->insertProduction(VARIABLE, rhsOne, 0, gatherAny,
-				       MixfixParser::MAKE_VARIABLE, sortIndex);
-	    }
-	  else
-	    {
-	      string sortName(Token::name(sortNameCode));
-	      int t = Token::encode((sortName + " variable").c_str());
-	      parser->insertVariableTerminal(sortNameCode, t);
-	      rhsOne[0] = t;
-	      parser->insertProduction(termNt, rhsOne, 0, emptyGather,
-				       MixfixParser::MAKE_VARIABLE, sortIndex);
-	      parser->insertProduction(VARIABLE, rhsOne, 0, emptyGather,
-				       MixfixParser::MAKE_VARIABLE, sortIndex);
+				       MixfixParser::MAKE_OTF_VARIABLE_KNOWN_SORT, sortIndex);
 	    }
 	}
-      //
-      //	Syntax for on the fly kind variable:
-      //	<FooTerm> ::= <ENDS_IN_COLON> [ <FooSortList> ]
-      //
-      int sortIndex = component->sort(Sort::ERROR_SORT)->getIndexWithinModule();
-      rhsKindVariable[2] = sortListNt;
-      parser->insertProduction(termNt, rhsKindVariable, 0, gatherAnyAny,
-			       MixfixParser::MAKE_VARIABLE, sortIndex);
-      parser->insertProduction(VARIABLE, rhsKindVariable, 0, gatherAnyAny,
-			       MixfixParser::MAKE_VARIABLE, sortIndex);
       //
       //	Syntax for term from unknown component:
       //	<TERM> ::= <FooTerm>
@@ -1417,18 +1439,33 @@ MixfixModule::makeSpecialProductions()
 	    IntMap::const_iterator t = leadTokens.find(sortName);
 	    if (t != leadTokens.end())
 	      {
+		//
+		//	sortName is a lead token with its own nonterminal.
+		//
 		rhs[0] = code;
 		parser->insertProduction(t->second, rhs, 0, emptyGather);
 	      }
 	    else if (Sort* sort = findSort(sortName))
 	      {
+		//
+		//	sortName is a regular sort so just use the nonterminal
+		//	for its component.
+		//
 		int sortIndex = sort->getIndexWithinModule();
 		int componentIndex = sort->component()->getIndexWithinModule();
 		rhs[0] = code;
 		parser->insertProduction(nonTerminal(componentIndex, TERM_TYPE),
-					 rhs, 0, emptyGather, MixfixParser::MAKE_VARIABLE, sortIndex);
+					 rhs,
+					 0,
+					 emptyGather,
+					 MixfixParser::MAKE_OTF_VARIABLE_KNOWN_SORT,
+					 sortIndex);
 		parser->insertProduction(VARIABLE,
-					 rhs, 0, emptyGather, MixfixParser::MAKE_VARIABLE, sortIndex);
+					 rhs,
+					 0,
+					 emptyGather,
+					 MixfixParser::MAKE_OTF_VARIABLE_KNOWN_SORT,
+					 sortIndex);
 	      }
 	    break;
 	  }
@@ -1590,7 +1627,7 @@ MixfixModule::makePolymorphProductions()
 		{
 		  gather[j] = PREFIX_GATHER;
 		  const Sort* s = p.domainAndRange[j];
-		  if (s != 0)
+		  if (s != nullptr)
 		    rhs[2 + 2 * j] = nonTerminal(s, TERM_TYPE);
 		  rhs[3 + 2 * j] = (j == nrArgs - 1) ? rightParen : comma;
 		}
@@ -1610,7 +1647,7 @@ MixfixModule::makePolymorphProductions()
 	      if (t == underscore)
 		{
 		  const Sort* s = p.domainAndRange[underscores.length()];
-		  if (s != 0)
+		  if (s != nullptr)
 		    mixfixRhs[j] = nonTerminal(s, TERM_TYPE);
 		  underscores.append(j);
 		}
@@ -1627,7 +1664,7 @@ MixfixModule::makePolymorphProductions()
 	    {
 	      int termNt = nonTerminal(j, TERM_TYPE);  // nonterminal for instantiation kind
 	      const Sort* s = p.domainAndRange[nrArgs];
-	      int rangeNt = (s == 0) ? termNt : nonTerminal(s, TERM_TYPE);
+	      int rangeNt = (s == nullptr) ? termNt : nonTerminal(s, TERM_TYPE);
 
 	      if (si.symbolType.hasFlag(SymbolType::ASSOC))
 		{
@@ -1651,7 +1688,7 @@ MixfixModule::makePolymorphProductions()
 		  //
 		  for (int k = 0; k < nrArgs; k++)
 		    {
-		      if (p.domainAndRange[k] == 0)
+		      if (p.domainAndRange[k] == nullptr)
 			rhs[2 + 2 * k] = termNt;
 		    }
 		  parser->insertProduction(rangeNt, rhs, 0, gather,
@@ -1664,7 +1701,7 @@ MixfixModule::makePolymorphProductions()
 		  //
 		  for (int k = 0; k < nrArgs; k++)
 		    {
-		      if (p.domainAndRange[k] == 0)
+		      if (p.domainAndRange[k] == nullptr)
 			mixfixRhs[underscores[k]] = termNt;
 		    }
 		  parser->insertProduction(rangeNt,
@@ -1686,7 +1723,6 @@ MixfixModule::makeBubbleProductions()
   cout << "<Bubble productions>\n";
 #endif
 
-  //#ifdef BUBBLES
   int nrBubbleSpecs = bubbleSpecs.length();
   for (int i = 0; i < nrBubbleSpecs; i++)
     {
@@ -1699,5 +1735,4 @@ MixfixModule::makeBubbleProductions()
 				     b.excludedTokens,
 				     i);
     }
-  //#endif
 }

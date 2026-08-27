@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2023 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -27,7 +27,7 @@
 void
 SyntacticPreModule::process()
 {
-  flatModule = new VisibleModule(id(), getModuleType(), getOwner());
+  flatModule = new VisibleModule(id(), getModuleType(), ImportModule::TEXT, getOwner());
   flatModule->addUser(this);
   flatModule->setLineNumber(getLineNumber());
 #ifdef QUANTIFY_PROCESSING
@@ -199,7 +199,13 @@ SyntacticPreModule::processSubsorts()
 	      bigger.clear();
 	    }
 	  else
-	    bigger.append(getSort(token));
+	    {
+	      //
+	      //	We allow this to be the declaration of the sort
+	      //	if it hasn't been declared.
+	      //
+	      bigger.append(getSort(token, true));
+	    }
 	}
       insertSubsorts(smaller, bigger);
       smaller.clear();
@@ -218,12 +224,13 @@ SyntacticPreModule::insertSubsorts(const Vector<Sort*> smaller, Vector<Sort*> bi
 }
 
 Sort*
-SyntacticPreModule::getSort(Token token)
+SyntacticPreModule::getSort(Token token, bool allowUndeclared)
 {
   //
   //	Check that token corresponds to an actual sort.
   //	If it doesn't, we assume the user just forgot to declare it,
-  //	and add it so we can press on.
+  //	and add it so we can press on. If allowUndeclared is true we
+  //	don't print a warning.
   //
   int code = token.code();
   Sort* sort = flatModule->findSort(code);
@@ -236,8 +243,9 @@ SyntacticPreModule::getSort(Token token)
 	  flatModule->markAsBad();  // mostly to deny meta-imports
 	}
       sort = flatModule->addSort(code);
-      sort->setLineNumber(FileTable::SYSTEM_CREATED);
-      IssueWarning(LineNumber(token.lineNumber()) << ": undeclared sort " << QUOTE(sort) << '.');
+      sort->setLineNumber(token.lineNumber());
+      WarningCheck(allowUndeclared, LineNumber(token.lineNumber()) <<
+		   ": undeclared sort " << QUOTE(sort) << '.');
     }
   return sort;
 }
@@ -368,6 +376,7 @@ SyntacticPreModule::processOps()
 							   opDef.gather,
 							   opDef.format,
 							   opDef.latexMacro,
+							   opDef.rpo,
 							   opDef.metadata);
 	  opDecl.originator = true;  // HACK
 	}
@@ -388,6 +397,7 @@ SyntacticPreModule::processOps()
 						       opDef.gather,
 						       opDef.format,
 						       opDef.latexMacro,
+						       opDef.rpo,
 						       opDef.metadata,
 						       opDecl.originator);
 	  if (flatModule->parameterDeclared(opDecl.symbol))
@@ -487,7 +497,21 @@ SyntacticPreModule::processImports()
   for (const auto& i : autoImports)
     {
       if (ImportModule* fm = getOwner()->getModuleOrIssueWarning(i.first, *this))
-	flatModule->addImport(fm, i.second, *this);
+	{
+	  if (fm->hasFreeParameters())
+	    {
+	      IssueWarning(*this << ": cannot automatically import module " << fm <<
+			   " because it has free parameters.");
+	      //
+	      //	Mark the module as bad to avoid cascading warnings and potential
+	      //	internal errors. But press ahead with remaining imports since
+	      //	they should be independent and we might find other errors.
+	      //
+	      flatModule->markAsBad();
+	    }
+	  else
+	    flatModule->addImport(fm, i.second, *this);
+	}
       else
 	{
 	  //

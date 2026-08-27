@@ -1,0 +1,33 @@
+Grammar:
+	nonterminals: 253
+	terminals: 770
+	productions: 2118
+
+Term rewriting system:
+	kinds: 44
+	sorts: 151
+	user symbols: 462
+	total symbols: 527
+	polymorphic operators: 5
+	membership axioms: 0
+	equations: 249
+	rules: 0
+	strategies: 0
+	strategy definitions: 0
+Grammar:
+	nonterminals: 253
+	terminals: 770
+	productions: 2118
+
+Term rewriting system:
+	kinds: 44
+	sorts: 151
+	user symbols: 462
+	total symbols: 462
+	polymorphic operators: 5
+	membership axioms: 0
+	equations: 0
+	rules: 0
+	strategies: 0
+	strategy definitions: 0
+Bye.

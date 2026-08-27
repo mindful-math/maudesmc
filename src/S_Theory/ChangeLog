@@ -1,3 +1,32 @@
+2026-04-06  Saruman the White  <eker@eker10>
+
+	* S_DagNode.hh (S_DagNode::normalizeAtTop): moved here and made
+	inline
+
+	* S_Symbol.hh (class S_Symbol): adde decls for compileEquations()
+	and eqRewriteCtor()
+
+	* S_Symbol.cc (S_Symbol::compileEquations): added
+	(S_Symbol::eqRewriteCtor): added
+	(S_Symbol::eqRewriteStandardStrategy): simplified now we know we
+	have equations
+	(S_Symbol::S_Symbol): don't call setEqRewrite() function here
+
+2026-03-06  Saruman the White  <eker@eker10>
+
+	* S_Symbol.hh (class S_Symbol): delete decl for eqRewrite()
+
+	* S_Symbol.cc (S_Symbol::eqRewrite): deleted
+
+2025-01-20  Saruman the White  <eker@eker10>
+
+	* S_Symbol.hh (class S_Symbol): added decls for
+	eqRewriteStandardStrategy(), eqRewriteComplexStrategy()
+
+	* S_Symbol.cc (CUI_Symbol::eqRewriteStandardStrategy): added
+	(CUI_Symbol::eqRewriteComplexStrategy): added
+	(S_Symbol::S_Symbol): call setEqRewrite()
+
 2024-03-05  Steven Eker  <eker@pup>
 
 	* S_Term.cc (S_Term::arguments): made const
@@ -173,7 +202,7 @@
 2010-06-30  Steven Eker  <eker@rho>
 
 	* S_DagNode.cc (S_DagNode::computeSolvedForm2): use
-	resolveTheoryClash() 
+	resolveTheoryClash()
 	(S_DagNode::computeSolvedForm2): don't insist that smaller
 	iteration side has a variable argument before peeling
 
@@ -384,7 +413,7 @@
 2004-06-02  Steven Eker  <eker@goo.csl.sri.com>
 
 	* S_DagNode.hh: use #include "gmpxx.h"
-	
+
 ===================================Maude84c===========================================
 
 2003-08-29  Steven Eker  <eker@goo.csl.sri.com>
@@ -403,7 +432,7 @@
 
 	* S_Symbol.hh (class S_Symbol): added nonCTorBound field to struct
 	SortPath
-	
+
 ===================================Maude82===========================================
 
 2003-05-30  Steven Eker  <eker@goo.csl.sri.com>
@@ -487,7 +516,7 @@
 	(next): updated Assert()
 
 	* S_ArgumentIterator.hh: removed #pragma
-	
+
 ===================================Maude79===========================================
 
 2002-11-25  Steven Eker  <eker@goo.csl.sri.com>
@@ -511,14 +540,14 @@
 	* S_DagNode.hh (class S_DagNode): updated stackArguments() decl
 
 	* S_DagNode.cc (stackArguments): handle respectFrozen flag
-	
+
 ===================================Maude76==================================================
 
 2002-08-02  Steven Eker  <eker@goo.csl.sri.com>
 
 	* S_Term.cc (compileRhs2): added code the flag the last use of
 	source
-	
+
 ===================================Maude74==================================================
 
 2002-05-15  Steven Eker  <eker@goo.csl.sri.com>
@@ -723,7 +752,7 @@
 
 	* S_Subproblem.cc (solve): fixed bug where we weren't comparing 
 	t.compare(0) == 0
-	
+
 	* S_Symbol.cc (computeBaseSort): implemented
 
 2002-04-29  Steven Eker  <eker@goo.csl.sri.com>
@@ -859,7 +888,7 @@
 	* S_Theory.hh: created
 
 	* S_Symbol.hh: rewritten in accord with new theory interface
-	
+
 ===================================Maude72==================================================
 
 2001-04-03  Steven Eker  <eker@goo.csl.sri.com>

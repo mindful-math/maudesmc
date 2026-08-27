@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2024 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -1877,6 +1877,9 @@ fmod META-MODULE is
   op _*(_) : ModuleExpression RenamingSet -> ModuleExpression
     [ctor prec 39 format (d d s n++i n--i d)] .
 
+*** fake declaration to enable op-hook
+  op _[_](_)[_] : Qid ModuleExpression QidList ParameterList -> Expression [ctor prec 35] .
+
 *** parameter lists
   sort EmptyCommaList NeParameterList ParameterList .
   subsorts ViewExpression < NeParameterList < ParameterList .
@@ -1938,6 +1941,7 @@ fmod META-MODULE is
   op msg : -> Attr [ctor] .
   op portal : -> Attr [ctor] .
   op pconst : -> Attr [ctor] .
+  op rpo : Nat -> Attr [ctor] .
   op frozen : NeNatList -> Attr [ctor] .
   op poly : NeNatList -> Attr [ctor] .
   op special : NeHookList -> Attr [ctor] .
@@ -2082,6 +2086,17 @@ fmod META-MODULE is
   eq getName(smod Q is IL sorts SS . SSDS OPDS MAS EQS RLS STDS STDFS endsm) = Q .
   eq getName(smod Q{PDL} is IL sorts SS . SSDS OPDS MAS EQS RLS STDS STDFS endsm) = Q .
   eq getName(sth Q is IL sorts SS . SSDS OPDS MAS EQS RLS STDS STDFS endsth) = Q .
+
+  op getParameters : Module -> ParameterDeclList .
+  eq getParameters(fmod Q is IL sorts SS . SSDS OPDS MAS EQS endfm) = nil .
+  eq getParameters(mod Q is IL sorts SS . SSDS OPDS MAS EQS RLS endm) = nil .
+  eq getParameters(fmod Q{PDL} is IL sorts SS . SSDS OPDS MAS EQS endfm) = PDL .
+  eq getParameters(mod Q{PDL} is IL sorts SS . SSDS OPDS MAS EQS RLS endm) = PDL .
+  eq getParameters(fth Q is IL sorts SS . SSDS OPDS MAS EQS endfth) = nil .
+  eq getParameters(th Q is IL sorts SS . SSDS OPDS MAS EQS RLS endth) = nil .
+  eq getParameters(smod Q is IL sorts SS . SSDS OPDS MAS EQS RLS STDS STDFS endsm) = nil .
+  eq getParameters(smod Q{PDL} is IL sorts SS . SSDS OPDS MAS EQS RLS STDS STDFS endsm) = PDL .
+  eq getParameters(sth Q is IL sorts SS . SSDS OPDS MAS EQS RLS STDS STDFS endsth) = nil .
 
   op getImports : Module -> ImportList .
   eq getImports(fmod H is IL sorts SS . SSDS OPDS MAS EQS endfm) = IL .
@@ -2536,7 +2551,7 @@ fmod META-LEVEL is
 	op-hook oneStratSymbol		(one : Strategy ~> Strategy)
 	op-hook starStratSymbol		(_* : Strategy ~> Strategy)
 	op-hook normalizationStratSymbol
-			(_! : Strategy ~> Strategy)
+		(_! : Strategy ~> Strategy)
 	op-hook notStratSymbol		(not : Strategy ~> Strategy)
 	op-hook testStratSymbol		(test : Strategy ~> Strategy)
 	op-hook tryStratSymbol		(try : Strategy ~> Strategy)
@@ -2563,6 +2578,8 @@ fmod META-LEVEL is
         op-hook sumSymbol		(_+_ : ModuleExpression ModuleExpression ~> ModuleExpression)
         op-hook renamingSymbol		(_*(_) : ModuleExpression RenamingSet ~> ModuleExpression)
         op-hook instantiationSymbol	(_{_} : Expression ParameterList ~> Expression)
+	op-hook transformationSymbol
+	        (_[_](_)[_] : Qid ModuleExpression QidList ParameterList ~> Expression)
 
         op-hook protectingSymbol	(protecting_. : ModuleExpression ~> Import)
         op-hook extendingSymbol		(extending_. : ModuleExpression ~> Import)
@@ -2616,6 +2633,7 @@ fmod META-LEVEL is
         op-hook msgSymbol		(msg : ~> Attr)
         op-hook portalSymbol		(portal : ~> Attr)
         op-hook pconstSymbol		(pconst : ~> Attr)
+        op-hook rpoSymbol		(rpo : Nat ~> Attr)
         op-hook specialSymbol		(special : NeHookList ~> Attr)
 
         op-hook labelSymbol		(label : Qid ~> Attr)
@@ -2927,6 +2945,11 @@ fmod META-LEVEL is
            id-hook MetaLevelOpSymbol	(metaPrettyPrintStrategy)
            op-hook shareWith		(metaReduce : Module Term ~> ResultPair))] .
 
+  op typeExists : Module Type ~> Bool
+        [special (
+           id-hook MetaLevelOpSymbol	(metaTypeExists)
+           op-hook shareWith		(metaReduce : Module Term ~> ResultPair))] .
+
   op sortLeq : Module Type Type ~> Bool
         [special (
            id-hook MetaLevelOpSymbol	(metaSortLeq)
@@ -3163,6 +3186,428 @@ fmod META-LEVEL is
         [special (
            id-hook MetaLevelOpSymbol	(legacyMetaVariantDisjointUnify)
            op-hook shareWith		(metaReduce : Module Term ~> ResultPair))] .
+endfm
+
+***
+***	Module transformation and view generation.
+***
+
+fmod EXTENDED-META-LEVEL is
+  protecting META-LEVEL .
+
+*** module lists
+  subsort Module < NeModuleList < ModuleList .
+  op nil : -> ModuleList [ctor] .
+  op _,_ : ModuleList ModuleList -> ModuleList [ctor assoc id: nil] .
+  op _,_ : NeModuleList ModuleList -> NeModuleList [ctor ditto] .
+  op _,_ : ModuleList NeModuleList -> NeModuleList [ctor ditto] .
+
+*** view lists
+  subsort View < NeViewList < ViewList .
+  op nil : -> ViewList [ctor] .
+  op _,_ : ViewList ViewList -> ViewList [ctor assoc id: nil] .
+  op _,_ : NeViewList ViewList -> NeViewList [ctor ditto] .
+  op _,_ : ViewList NeViewList -> NeViewList [ctor ditto] .
+
+  var M : Module .
+  var ML : ModuleList .
+  op getNames : ModuleList -> QidList .
+  eq getNames(nil) = nil .
+  eq getNames(M, ML) = getName(M) getNames(ML) .
+
+*** module expression lists
+  subsort NeModuleExpressionList < ModuleExpressionList .
+  subsort ModuleExpression EmptyCommaList < ModuleExpressionList .
+  op _,_ : ModuleExpressionList ModuleExpressionList -> ModuleExpressionList [ctor ditto] .
+  op _,_ : NeModuleExpressionList ModuleExpressionList -> NeModuleExpressionList [ctor ditto] .
+  op _,_ : ModuleExpressionList NeModuleExpressionList -> NeModuleExpressionList [ctor ditto] .
+
+*** for preregularity, expression lists
+  subsort EmptyCommaList < ExpressionList < ModuleExpressionList ParameterList .
+  subsort Expression < NeExpressionList < ExpressionList NeParameterList .
+  op _,_ : ExpressionList ExpressionList -> ExpressionList [ctor ditto] .
+  op _,_ : NeExpressionList ExpressionList -> NeExpressionList [ctor ditto] .
+  op _,_ : ExpressionList NeExpressionList -> NeExpressionList [ctor ditto] .
+
+*** the real declaration for the module transformation / view generation operator
+  op _[_](_)[_] : Qid ModuleExpressionList QidList ParameterList -> Expression [ctor ditto] .
+endfm
+
+fmod SYSTEM-MESSAGE is
+  protecting EXT-BOOL .
+  protecting STRING .
+  protecting QID-LIST .
+  subsort SystemMsg < SystemMsgList .
+  op nil : -> SystemMsgList [ctor] .
+  op __ : SystemMsgList SystemMsgList -> SystemMsgList [ctor assoc id: nil] .
+  op advisory : String -> SystemMsg [ctor] .
+  op warning : String -> SystemMsg [ctor] .
+  op verbose : String -> SystemMsg [ctor] .
+
+*** convenience functions for constructing messages
+  var S : String .
+  var Q : Qid .
+  var QL : QidList .
+  var NeQL : NeQidList .
+  var N : Nat .
+  var FR : FindResult .
+
+  op string : QidList -> String [ditto] .
+  eq string(nil) = "" .
+  eq string(Q NeQL) = string(Q) + " " + string(NeQL) .
+
+  op highlight : String -> String .
+  eq highlight(S) = "\036" + S + "\037" .
+
+  op stripQuotes : String -> String .
+  eq stripQuotes(S) = if length(S) >= 2 and-then
+                         substr(S, 0, 1) == "\"" and-then
+			 substr(S, sd(length(S), 1), 1) == "\"" then
+                        substr(S, 1, sd(length(S), 2))
+		      else S fi .
+
+  op highlightSQ : Qid -> String .
+  eq highlightSQ(Q) = highlight(stripQuotes(string(Q))) .
+
+  op highlightSQ : QidList String -> String .
+  eq highlightSQ(nil, S) = "" .
+  eq highlightSQ(Q, S) = highlightSQ(Q) .
+  eq highlightSQ(Q NeQL, S) = highlightSQ(Q) + S + highlightSQ(NeQL, S) .
+
+  op formatSortName : String -> String .
+  ceq formatSortName(S) = if FR == notFound then S
+                          else
+			    substr(S, 0, FR) +
+			    $backquote(substr(S, FR + 1, 1)) +
+			    formatSortName(substr(S, FR + 1, length(S)))
+			  fi if FR := find(S, "`", 0) .
+  op $backquote : String -> String .
+  eq $backquote("{") = "" .
+  eq $backquote("}") = "" .
+  eq $backquote(",") = "" .
+  eq $backquote(S) = "`" [owise] .
+
+  op pluralize : String Nat -> String .
+  eq pluralize(S, s 0) = S .
+  eq pluralize(S, N) = S + "s" [owise] .
+
+  op concat : QidList -> String .
+  eq concat(nil) = "" .
+  eq concat(Q QL) = string(Q) + concat(QL) .
+endfm
+
+fmod MODULE-TRANSFORMER is
+  protecting EXTENDED-META-LEVEL .
+  protecting SYSTEM-MESSAGE .
+
+  sort ModuleResult .
+  op {_,_} : ModuleList SystemMsgList -> ModuleResult
+    [special (
+      id-hook ModuleResultSymbol
+      op-hook nilModuleListSymbol	(nil : ~> ModuleList)
+      op-hook moduleListSymbol		(_,_ : ModuleList ModuleList ~> ModuleList)
+      op-hook nilViewListSymbol		(nil : ~> ViewList)
+      op-hook viewListSymbol		(_,_ : ViewList ViewList ~> ViewList)
+      op-hook nilSystemMsgListSymbol	(nil : ~> SystemMsgList)
+      op-hook systemMsgListSymbol	(__ : SystemMsgList SystemMsgList ~> SystemMsgList)
+      op-hook advisorySymbol		(advisory : String ~> SystemMsg)
+      op-hook warningSymbol		(warning : String ~> SystemMsg)
+      op-hook verboseSymbol		(verbose : String ~> SystemMsg)
+      op-hook shareWith			(metaReduce : Module Term ~> ResultPair))
+     ctor] .
+
+  op _(_)[_] : Qid QidList ImportList -> ImportList .
+  var T : Qid .
+  var OPT : QidList .
+  var ME : ModuleExpression .
+  var IL : ImportList .
+  eq T(OPT)[protecting(ME) . IL] = protecting(T[ME](OPT)[empty]) . T(OPT)[IL] .
+  eq T(OPT)[extending(ME) . IL] = extending(T[ME](OPT)[empty]) . T(OPT)[IL] .
+  eq T(OPT)[generated-by(ME) . IL] = generated-by(T[ME](OPT)[empty]) . T(OPT)[IL] .
+  eq T(OPT)[including(ME) . IL] = including(T[ME](OPT)[empty]) . T(OPT)[IL] .
+  eq T(OPT)[(nil).ImportList] = nil .
+endfm
+
+fmod VIEW-TRANSFORMER is
+  protecting EXTENDED-META-LEVEL .
+  protecting SYSTEM-MESSAGE .
+
+  sort ViewResult .
+  op {_,_} : ViewList SystemMsgList -> ViewResult
+    [special (
+      id-hook ViewResultSymbol
+      op-hook nilModuleListSymbol	(nil : ~> ModuleList)
+      op-hook moduleListSymbol		(_,_ : ModuleList ModuleList ~> ModuleList)
+      op-hook nilViewListSymbol		(nil : ~> ViewList)
+      op-hook viewListSymbol		(_,_ : ViewList ViewList ~> ViewList)
+      op-hook nilSystemMsgListSymbol	(nil : ~> SystemMsgList)
+      op-hook systemMsgListSymbol	(__ : SystemMsgList SystemMsgList ~> SystemMsgList)
+      op-hook advisorySymbol		(advisory : String ~> SystemMsg)
+      op-hook warningSymbol		(warning : String ~> SystemMsg)
+      op-hook verboseSymbol		(verbose : String ~> SystemMsg)
+      op-hook shareWith			(metaReduce : Module Term ~> ResultPair))
+     ctor] .
+endfm
+
+***
+***	Predefined module and view generators.
+***
+
+fmod TUPLE is
+  pr MODULE-TRANSFORMER .
+  pr CONVERSION .
+  var N : Nat .
+  var NzN : NzNat .
+  vars Q OP : Qid .
+  var S D R : Sort .
+  vars QL RL : QidList .
+  var NeML : NeModuleList .
+  var Var : Term .
+  vars Args Vars : TermList .
+
+  op makeTuple : ModuleList QidList -> ModuleResult .
+  ceq makeTuple(nil, Q) = {
+    fmod 'DUMMY{ paramDecls(NzN) } is
+      nil
+      sorts S .
+      none
+      op OP : eltList(NzN) -> S [ctor] .
+      projectionOps(NzN, S, eltList(NzN))
+      none
+      projectionEqs(NzN, OP, varList(NzN), varList(NzN))
+    endfm, nil} if NzN := rat(string(Q), 10) /\
+      S := qid("Tuple{" + params(NzN) + "}") /\
+      OP := qid("(" + underscores(NzN) + ")") .
+
+  eq makeTuple(NeML, QL) =
+    {nil, warning("module generator " + highlight("TUPLE(n)") + " did not expect input " +
+     pluralize("module", size(getNames(NeML))) + " " + highlightSQ(getNames(NeML), ", ") + ".")} .
+
+  eq makeTuple(nil, QL) =
+    {nil, warning("module generator " + highlight("TUPLE(n)") +
+     " expects a single numeric argument, not " + highlight(string(QL)) + ".")} [owise] .
+
+  op paramDecls : Nat -> ParameterDeclList .
+  eq paramDecls(0) = nil .
+  eq paramDecls(s N) = paramDecls(N), (qid("X" + string(s N, 10)) :: 'TRIV) .
+
+  op params : NzNat -> String .
+  eq params(1) = "X1" .
+  eq params(s NzN) = params(NzN) + ",X" + string(s NzN, 10) .
+
+  op underscores : NzNat -> String .
+  eq underscores(1) = "_" .
+  eq underscores(s NzN) = underscores(NzN) + ",_" .
+
+  op eltList : Nat -> QidList .
+  eq eltList(0) = nil .
+  eq eltList(s N) = eltList(N) qid("X" + string(s N, 10) + "$Elt") .
+
+  op projectionOps : Nat Qid QidList -> OpDeclSet .
+  eq projectionOps(0, D, RL) = none .
+  eq projectionOps(s N, D, RL R) =
+    projectionOps(N, D, RL)
+    (op qid("p" + string(s N, 10) + "_") : D -> R [none].) .
+
+  op varList : Nat -> TermList .
+  eq varList(0) = empty .
+  eq varList(s N) = varList(N), qid("Y" + string(s N, 10) + ":X" + string(s N, 10) + "$Elt") .
+
+  op projectionEqs : Nat Qid TermList TermList -> EquationSet .
+  eq projectionEqs(0, OP, Args, Vars) = none .
+  eq projectionEqs(s N, OP, Args, (Vars, Var)) =
+    projectionEqs(N, OP, Args, Vars)
+    (eq qid("p" + string(s N, 10) + "_")[OP[Args]] = Var [none].) .
+endfm
+
+fmod POWER is
+  pr MODULE-TRANSFORMER .
+  pr CONVERSION .
+  var NzN : NzNat .
+  var Q : Qid .
+  var QL : QidList .
+  var NeML : NeModuleList .
+
+  op makePower : ModuleList QidList -> ModuleResult .
+  ceq makePower(nil, Q) = {
+    fmod 'DUMMY{ 'X :: 'TRIV } is
+      including ('TUPLE[empty](Q)[empty]){paramList(NzN)} .
+      sorts none .
+      none
+      none
+      none
+      none
+    endfm, nil} if NzN := rat(string(Q), 10)  .
+
+  eq makePower(NeML, QL) =
+    {nil, warning("module generator " + highlight("POWER(n)") + " did not expect input " +
+     pluralize("module", size(getNames(NeML))) + " " + highlightSQ(getNames(NeML), ", ") + ".")} .
+
+  eq makePower(nil, QL) =
+    {nil, warning("module generator " + highlight("POWER(n)") +
+     " expects a single numeric argument, not " + highlight(string(QL)) + ".")} [owise] .
+
+  op paramList : NzNat -> NeParameterList .
+  eq paramList(1) = 'X .
+  eq paramList(s NzN) = 'X, paramList(NzN) .
+endfm
+
+fmod @ is
+  pr VIEW-TRANSFORMER .
+  pr CONVERSION .
+  var M : Module .
+  var NeML : NeModuleList .
+  var ME : ModuleExpression .
+  var MEL : ModuleExpressionList .
+  vars TS P VN : Sort .
+  vars SS SV LS : SortSet .
+  var NeSS : NeSortSet .
+  var PDL : ParameterDeclList .
+  var NePDL : NeParameterDeclList .
+  vars ST Name : String .
+  vars Index Depth Start : Nat .
+  var Q : Qid .
+  var QL : QidList .
+  var NeQL : NeQidList .
+
+  op makeDefault : ModuleList QidList ModuleExpressionList -> ViewResult .
+***
+***	Make sure we have exactly one target module.
+***
+  eq makeDefault(nil, QL, empty) =
+    {nil, warning("view generator " + highlight("@[m]") + " requires a target module.")} .
+  eq makeDefault((M, NeML), QL, MEL) =
+    {nil, warning("multiple target modules " + highlightSQ(getNames(M, NeML), ", ")  +
+     " supplied to view generator " + highlight("@[m]") + ".")} .
+***
+***	No target sort supplied so we have to chose one.
+***
+  eq makeDefault(M, nil, ME) = useChosenSort(bestSorts(M, getSorts(M)), M, ME)  .
+
+  op useChosenSort : SortSet Module ModuleExpressionList -> ViewResult .
+  eq useChosenSort(TS, M, ME) = makeView(ME, TS, getParameters(M)) .
+***
+***	Make sure we have exactly one chosen sort.
+***
+  eq useChosenSort(none, M, ME) =
+    {nil, warning("view generator " + highlight("@[m]") +
+    " could not find any local sort in module " + highlightSQ(getName(M)) +
+    " to map " + highlight("Elt") + " to.")} .
+  eq useChosenSort((TS ; NeSS), M, ME) =
+    {nil, warning("view generator " + highlight("@[m]") +
+    " could not find a unique best sort in module " + highlightSQ(getName(M)) +
+    " to map " + highlight("Elt") + " to. Possible choices are: " +
+    highlightSortSet((TS ; NeSS)))} .
+***
+***	The best sorts are usually the local top sorts. If there is more
+***	than one, we try removing sorts that have nonlocal subsorts.
+***
+  op bestSorts : Module SortSet -> SortSet .
+  eq bestSorts(M, none) = none .
+  eq bestSorts(M, NeSS) = select(M, NeSS, topSorts(M, NeSS, NeSS)) .
+
+  op topSorts : Module SortSet SortSet -> SortSet .
+  eq topSorts(M, none, SS) = SS .
+  eq topSorts(M, (TS ; SS), NeSS) = topSorts(M, SS, (NeSS \ lesserSorts(M, TS))) .
+  
+  op select : Module SortSet SortSet -> SortSet .
+  eq select(M, LS, TS) = TS .
+  eq select(M, LS, (TS ; NeSS)) =
+    if filter(M, LS, (TS ; NeSS), none) == none then
+      TS ; NeSS
+    else
+      filter(M, LS, (TS ; NeSS), none)
+    fi .
+
+  op filter : Module SortSet SortSet SortSet -> SortSet .
+  eq filter(M, LS, none, SV) = SV .
+  eq filter(M, LS, (TS ; SS), SV) =
+    filter(M, LS, SS, if lesserSorts(M, TS) subset LS then TS ; SV else SV fi) .
+***
+***	User provided target sort.
+***
+  ceq makeDefault(M, NeQL, ME) = useGivenSort(TS, M, ME) if TS := qid(concat(NeQL)) .
+  eq makeDefault(M, NeQL, ME) = {nil, warning("view generator " + highlight("@[m]") +
+    " expected a valid sort name, not " + highlight(string(NeQL)) + ".")} [owise] .
+
+  op useGivenSort : Sort Module ModuleExpressionList -> ViewResult .
+  eq useGivenSort(TS, M, ME) = if typeExists(M, TS) then
+    makeView(ME, TS, getParameters(M))
+  else
+    {nil, warning("view generator " + highlight("@[m]") +
+    " could not find sort " + highlightSortSet(TS) + " in module " +
+    highlightSQ(getName(M)) + ".")}
+  fi .
+***
+***	View making machinery.
+***
+  op makeView : ModuleExpressionList Sort ParameterDeclList -> ViewResult .
+  eq makeView(ME, TS, PDL) = {
+    view header(qid(cleanName(string(TS), PDL)), PDL)
+      from 'TRIV to target(ME, PDL) is
+      sort 'Elt to TS .
+      none
+      none
+    endv, nil} .
+
+  op header : Sort ParameterDeclList -> Header .
+  eq header(VN, nil) = VN .
+  eq header(VN, NePDL) = VN{NePDL} .
+
+  op target : ModuleExpression ParameterDeclList -> ModuleExpression .
+  eq target(ME, nil) = ME .
+  eq target(ME, NePDL) = ME{paramList(NePDL)} .
+
+  op paramList : NeParameterDeclList -> NeParameterList .
+  eq paramList(TS :: ME) = TS .
+  eq paramList((TS :: ME, PDL)) = TS, paramList(PDL) .
+***
+***	Compute a clean name from the target sort name and parameter list.
+***	A structured sort name looks like
+***	  base{...}...{final}
+***	and we chop {final} if it contains one of our parameters, even if
+***	the parameter is inside nested, nonfinal {}s, in order to keep the
+***	clean name simple.
+***
+  op cleanName : String ParameterDeclList -> String .
+  eq cleanName(Name, PDL) =
+    if substr(Name, sd(length(Name), 1), 1) == "}" then
+      chop(Name, lastBraces(Name, sd(length(Name), 3), 0), PDL)
+    else
+      Name
+    fi .
+
+  op chop : String Nat ParameterDeclList -> String .
+  eq chop(Name, Start, nil) = Name .
+  eq chop(Name, Start, (P :: ME, PDL)) =
+    if find(Name, string(P), Start) == notFound then
+      chop(Name, Start, PDL)
+    else
+      substr(Name, 0, Start)
+    fi .
+
+  op lastBraces : String Nat Nat -> Nat .
+  eq lastBraces(Name, Index, Depth) =
+    if substr(Name, Index, 1) == "{" then
+      if Depth == 0 then
+        sd(Index, 1)
+      else
+        lastBraces(Name, sd(Index, 2), sd(Depth, 1))
+      fi
+    else
+      if substr(Name, Index, 1) == "}" then
+        lastBraces(Name, sd(Index, 2), Depth + 1)
+      else
+        lastBraces(Name, sd(Index, 1), Depth)
+      fi
+    fi .
+***
+***	Utility function.
+***
+  op highlightSortSet : SortSet -> String .
+  eq highlightSortSet(TS) = highlight(formatSortName(string(TS))) .
+  eq highlightSortSet(TS ; NeSS) = highlight(formatSortName(string(TS))) + ", " +
+    highlightSortSet(NeSS) .
 endfm
 
 ***

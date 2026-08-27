@@ -1,3 +1,124 @@
+2026-08-19  Saruman the White  <eker@eker10>
+
+	* prelude.maude: added NeModuleExpressionList
+	VIEW-GENERATOR -> VIEW-TRANSFORMER
+	TransformResult -> ModuleResult
+
+2026-08-16  Saruman the White  <eker@eker10>
+
+	* prelude.maude: transformer metasyntax, _[_](_) -> _[_](_)[_]
+	use this syntax in definition of meta-recursion operator
+	use this syntax in definition of POWER
+
+2026-08-14  Saruman the White  <eker@eker10>
+
+	* prelude.maude: id-hook TransformResultSymbol ->
+	ModuleResultSymbol
+	moved view lists from VIEW-GENERATOR to fmod EXTENDED-META-LEVEL
+	and completed them; added op-hook viewListSymbol
+
+2026-07-27  Saruman the White  <eker@eker10>
+
+	* prelude.maude: added typeExists() descent function; use
+	typeExists() in fmod @; distinguish between a bad sort name and
+	sort that doesn't exist
+	added formatSortName(), $backquote(); deleted stripBackQuotes()
+	handle funky sort names like A`B`C properly
+
+2026-07-20  Saruman the White  <eker@eker10>
+
+	* prelude.maude: NQL -> NeQL; added op concat(); added op
+	highlightSQ(); highlight -> highlightSQ for the 2 arg version
+	added op stripBackQuotes()
+	use stripBackQuotes() for putting sorts in warnings in fmod @
+
+2026-07-19  Saruman the White  <eker@eker10>
+
+	* prelude.maude: added default view generator fmod @
+
+2026-07-18  Saruman the White  <eker@eker10>
+
+	* prelude.maude: View? -> ViewList, failure -> nil,
+	viewFailureSymbol -> nilViewListSymbol, quote -> highlight
+	added POWER module generator
+
+2026-07-17  Saruman the White  <eker@eker10>
+
+	* prelude.maude: added quote() operator to fmod SYSTEM-MESSAGE
+	added getNames() operator to EXTENDED-META-LEVEL
+	added string() on QidList, quote() on QidList and stripQuotes()
+	operators to fmod SYSTEM-MESSAGE
+
+2026-07-15  Saruman the White  <eker@eker10>
+
+	* prelude.maude: fix bug where the real declaration for the module
+	transformation / view generation operator was the same as the fake
+	one
+
+2026-07-14  Saruman the White  <eker@eker10>
+
+	* prelude.maude: added getParameters projection function
+	moved module expression lists and expression lists to fmod
+	MODULE-LIST; changed _[_](_) to working on ModuleExpressions
+	rather than ModuleExpressionLists, and then added a subsort
+	overloading to MODULE-LIST to restore the functionality
+	rebranded MODULE-LIST as EXTENDED-META-LEVEL
+
+2026-07-13  Saruman the White  <eker@eker10>
+
+	* prelude.maude: added fmod MODULE-LIST; fmod MODULE-TRANSFORMER
+	and fmod VIEW-GENERATOR import MODULE-LIST; added
+	nilModuleListSymbol and moduleListSymbol hooks to {_,_} in
+	VIEW-GENERATOR
+
+2026-07-09  Saruman the White  <eker@eker10>
+
+	* prelude.maude: deleted generationSymbol to avoid the problem
+	with 'Foo('Bar) being parsed as a QidList 'Foo 'Bar
+	have _[_](_) return an Expression rather than a ModuleExpression
+
+2026-07-05  Saruman the White  <eker@eker10>
+
+	* prelude.maude: added _(_) : Qid QidList -> ViewExpression;
+	changed prec of _[_](_) : Qid ModuleExpressionList QidList ->
+	ModuleExpression to 35 so it binds tigher than instantiation
+
+2026-07-03  Saruman the White  <eker@eker10>
+
+	* prelude.maude: added special for view result symbol
+
+2026-06-29  Saruman the White  <eker@eker10>
+
+	* prelude.maude: added meta-recursion operator _(_)[_] to fmod
+	MODULE-TRANSFORMER
+
+2026-06-27  Saruman the White  <eker@eker10>
+
+	* prelude.maude: added ModuleExpressionList; added _[_](_) for
+	meta-transformations
+
+2026-06-26  Saruman the White  <eker@eker10>
+
+	* prelude.maude: refactor fmod MODULE-TRANSFORMER, split off fmod
+	SYSTEM-MESSAGE
+
+2026-06-25  Saruman the White  <eker@eker10>
+
+	* prelude.maude: added sort NeModuleList to fmod
+	MODULE-TRANSFORMER
+
+2026-06-22  Saruman the White  <eker@eker10>
+
+	* prelude.maude: transformResult takes a ModuleList
+
+2026-06-21  Saruman the White  <eker@eker10>
+
+	* prelude.maude: added fmod MODULE-TRANSFORMER
+
+2025-07-29  Rubén Rubio  <rubenrub@ucm.es>
+
+	* prelude.maude: added rpo attribute
+
 2025-02-28  Rubén Rubio  <rubenrub@ucm.es>
 
 	* model-checker.maude: modules LTL+ and MODEL-CHECKER+

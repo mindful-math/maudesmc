@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2003 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -29,31 +29,10 @@
 #include "cachedDag.hh"
 #include "fullCompiler.hh"
 
-class EqualitySymbol : public FreeSymbol
+class EqualitySymbol final : public FreeSymbol
 {
 public:
   EqualitySymbol(int id, const Vector<int>& strategy);
-
-  bool attachData(const Vector<Sort*>& opDeclaration,
-		  const char* purpose,
-		  const Vector<const char*>& data);
-  bool attachTerm(const char* purpose, Term* term);
-  void copyAttachments(Symbol* original, SymbolMap* map);
-  void getDataAttachments(const Vector<Sort*>& opDeclaration,
-			  Vector<const char*>& purposes,
-			  Vector<Vector<const char*> >& data);
-  void getTermAttachments(Vector<const char*>& purposes,
-			  Vector<Term*>& terms);
-
-  void postInterSymbolPass();
-  void reset();
-  bool eqRewrite(DagNode* subject, RewritingContext& context);
-  //
-  //	We don't accept or compile any equations.
-  //
-  bool acceptEquation(Equation* equation);
-  void compileEquations();
-  bool domainSortAlwaysLeqThan(Sort* sort, int argNr);
   //
   //	MVM stuff.
   //
@@ -68,6 +47,31 @@ public:
 #endif
 
 private:
+  static bool eqRewriteFast(Symbol* symbol, DagNode* subject, RewritingContext& context);
+  static bool eqRewriteSlow(Symbol* symbol, DagNode* subject, RewritingContext& context);
+  //
+  //	This class is final so we can make these overload private.
+  //
+  bool attachData(const Vector<Sort*>& opDeclaration,
+		  const char* purpose,
+		  const Vector<const char*>& data);
+  bool attachTerm(const char* purpose, Term* term);
+  void copyAttachments(Symbol* original, SymbolMap* map);
+  void getDataAttachments(const Vector<Sort*>& opDeclaration,
+			  Vector<const char*>& purposes,
+			  Vector<Vector<const char*> >& data);
+  void getTermAttachments(Vector<const char*>& purposes,
+			  Vector<Term*>& terms);
+
+  void postInterSymbolPass();
+  void reset();
+  //
+  //	We don't accept or compile any equations.
+  //
+  bool acceptEquation(Equation* equation);
+  void compileEquations();
+  bool domainSortAlwaysLeqThan(Sort* sort, int argNr);
+
   CachedDag equalTerm;
   CachedDag notEqualTerm;
 };

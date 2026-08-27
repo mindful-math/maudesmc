@@ -2,7 +2,7 @@
 
     This file is part of the Maude 3 interpreter.
 
-    Copyright 1997-2024 SRI International, Menlo Park, CA 94025, USA.
+    Copyright 1997-2026 SRI International, Menlo Park, CA 94025, USA.
 
     This program is free software; you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
@@ -32,7 +32,6 @@
 #include "compiler.hh"
 #include "viewDatabase.hh"
 #include "viewCache.hh"
-//#include "syntacticView.hh"
 #include "parameterDatabase.hh"
 #include "printSettings.hh"
 #include "SMT.hh"
@@ -110,11 +109,7 @@ public:
     //
     PRINT_ATTRIBUTE = 0x1000000,
     PRINT_ATTRIBUTE_NEWLINE = 0x2000000,
-    /*
-    PRINT_ATTRIBUTE_MB = 0x2000000,
-    PRINT_ATTRIBUTE_EQ = 0x4000000,
-    PRINT_ATTRIBUTE_RL = 0x8000000,
-    */
+    PRINT_ATTRIBUTE_SELECT = 0x4000000,
     //
     //	Cache flags.
     //
@@ -134,7 +129,8 @@ public:
 
     DEFAULT_FLAGS = SHOW_COMMAND | SHOW_STATS | SHOW_TIMING | SHOW_LOOP_TIMING |
     COMPILE_COUNT |
-    TRACE_CONDITION | TRACE_SUBSTITUTION | TRACE_MB | TRACE_EQ | TRACE_RL | TRACE_SD | TRACE_REWRITE | TRACE_BODY | TRACE_BUILTIN |
+    TRACE_CONDITION | TRACE_SUBSTITUTION | TRACE_MB | TRACE_EQ | TRACE_RL | TRACE_SD |
+    TRACE_REWRITE | TRACE_BODY | TRACE_BUILTIN |
     AUTO_CLEAR_PROFILE | AUTO_CLEAR_CACHES | AUTO_CLEAR_RULES | PRINT_ATTRIBUTE_NEWLINE
   };
 
@@ -150,7 +146,11 @@ public:
   void endLatexLog();
   MaudemlBuffer* getXmlBuffer() const;
 
-  void cleanCaches();
+  void protectCaches();
+  void unprotectCaches();
+  void tryToCleanCaches();
+  bool databasesLocked() const;
+
   void setFlag(Flags flag, bool polarity);
   bool getFlag(Flags flag) const;
 
@@ -204,11 +204,13 @@ public:
   void addSelected(const Vector<Token>& opName);
   void traceSelect(bool add);
   void breakSelect(bool add);
+  void printAttributeSelect(bool add);
   void traceExclude(bool add);
   void printConceal(bool add);
 
   bool traceId(int id);
   bool breakId(int id);
+  bool printAttributeId(int id);
   bool excludedModule(int id);
 
   void showProfile() const;
@@ -229,11 +231,12 @@ public:
   void showStrats(bool all = true) const;
   void showSds(bool all = true) const;
 
-  ImportModule* getModuleOrIssueWarning(int name, const LineNumber& lineNumber);
-  ImportModule* makeModule(const ModuleExpression* expr, EnclosingObject* enclosingObject = 0);
+  ImportModule* getModuleOrIssueWarning(int name, LineNumber lineNumber);
+  ImportModule* makeModule(const ModuleExpression* expr, EnclosingObject* enclosingObject = nullptr);
 
 private:
   typedef void (Interpreter::*ContinueFuncPtr)(Int64 limit, bool debug);
+  typedef set<int> IdSet;
 
   static DagNode* makeDag(Term* subjectTerm);
   static void printTiming(Int64 nrRewrites, Int64 cpu, Int64 real);
@@ -243,6 +246,11 @@ private:
 		      EnclosingObject* enclosingObject,
 		      ImportModule* requiredParameterTheory,
 		      int argNr);
+  bool makeInputViews(const Vector<ViewExpression*>& arguments,
+		      EnclosingObject* enclosingObject,
+		      LineNumber lineNumber,
+		      Vector<View*>& inputViews);
+
   void clearContinueInfo();
   DagNode* makeDag(const Vector<Token>& subject);
   void startUsingModule(VisibleModule* module);
@@ -257,7 +265,7 @@ private:
   void endRewriting(Timer& timer,
 		    CacheableRewritingContext* context,
 		    VisibleModule* module,
-		    ContinueFuncPtr cf = 0);
+		    ContinueFuncPtr cf = nullptr);
   void rewriteCont(Int64 limit, bool debug);
   void fRewriteCont(Int64 limit, bool debug);
   void eRewriteCont(Int64 limit, bool debug);
@@ -283,13 +291,6 @@ private:
 		     Int64 solutionCount,
 		     Int64 limit);
   void vuNarrowingCont(Int64 limit, bool debug);
-  /*
-  void doFvuNarrowing(Timer& timer,
-		      VisibleModule* module,
-		      NarrowingSequenceSearch3* state,
-		      Int64 solutionCount,
-		      Int64 limit);
-  */
   void doGetVariants(Timer& timer,
 		     VisibleModule* module,
 		     VariantSearch* state,
@@ -334,7 +335,7 @@ private:
 		     int solutionCount,
 		     int limit);
   void unifyCont(Int64 limit, bool debug);
-  void updateSet(set<int>& target, bool add);
+  void updateSet(IdSet& target, bool add);
   bool checkSearchRestrictions(SearchKind searchKind,
 			       int searchType,
 			       Term* target,				     
@@ -342,27 +343,71 @@ private:
 			       MixfixModule* module);
   void showNarrowingSearchPath(int stateNr, bool showRule, NarrowingSequenceSearch3* savedNarrowingSequence) const;
 
-  ofstream* xmlLog;
-  MaudemlBuffer* xmlBuffer;
-  MaudeLatexBuffer* latexBuffer;
+  ofstream* xmlLog = nullptr;
+  MaudemlBuffer* xmlBuffer = nullptr;
+  MaudeLatexBuffer* latexBuffer = nullptr;
 
-  int flags;
-  SyntacticPreModule* currentModule;
-  SyntacticView* currentView;
+  int flags = DEFAULT_FLAGS;
+  //
+  //	Now that module expression evaluation can involve calls to the metalevel which
+  //	also does module evaluation for metamodule expressions, we need to keep a count
+  //	of how many levels are currently using the module and view caches so they are not
+  //	inadvertently cleared while there are modules and views in the caches that are
+  //	going to be used during module expression evaluation, but whose user has yet to be
+  //	constructed.
+  //
+  int cacheUserCount = 0;
+  SyntacticPreModule* currentModule = nullptr;
+  SyntacticView* currentView = nullptr;
   //
   //	Continuation information.
   //
-  CacheableState* savedState;
-  Int64 savedSolutionCount;
-  VisibleModule* savedModule;
-  ContinueFuncPtr continueFunc;
+  CacheableState* savedState = nullptr;
+  Int64 savedSolutionCount = 0;
+  VisibleModule* savedModule = nullptr;
+  ContinueFuncPtr continueFunc = nullptr;
   Vector<Token> savedLoopSubject;
 
-  set<int> selected;		// temporary for building set of identifiers
-  set<int> traceIds;		// names of symbols/labels selected for tracing
-  set<int> breakIds;		// names of symbols/labels selected as break points
-  set<int> excludedModules;	// names of modules to be excluded from tracing
+  IdSet selected;		// temporary for building set of identifiers
+  IdSet traceIds;		// names of symbols/labels selected for tracing
+  IdSet breakIds;		// names of symbols/labels selected as break points
+  IdSet printAttributeIds;	// names of labels selected to execute print attribute
+  IdSet excludedModules;	// names of modules to be excluded from tracing
 };
+
+inline void
+Interpreter::protectCaches()
+{
+  ++cacheUserCount;
+}
+
+inline void
+Interpreter::unprotectCaches()
+{
+  --cacheUserCount;
+  //
+  //	Any code that was constructing modules and views may have resulted
+  //	modules and views without any users.
+  //	This can happen at any level if module expression evaluation fails
+  //	but at the metalevel it can also arise from modules being displaced
+  //	from a metamodule cache.
+  //	We check if the cache user count is 0, in which case nothing is in the 
+  //	process of evaluating a module expression, and all users of modules and
+  //	views will have be recorded and we can do a garbage collection.
+  //
+  tryToCleanCaches();
+}
+
+inline bool
+Interpreter::databasesLocked() const
+{
+  //
+  //	If code is using the module and view caches, we don't want to allow
+  //	the module and view databases to change underneath it or memory
+  //	corruption make occur.
+  //
+  return cacheUserCount > 0;
+}
 
 inline void
 Interpreter::traceSelect(bool add)
@@ -374,6 +419,12 @@ inline void
 Interpreter::breakSelect(bool add)
 {
   updateSet(breakIds, add);
+}
+
+inline void
+Interpreter::printAttributeSelect(bool add)
+{
+  updateSet(printAttributeIds, add);
 }
 
 inline void
@@ -392,6 +443,12 @@ inline bool
 Interpreter::breakId(int id)
 {
   return breakIds.find(id) != breakIds.end();
+}
+
+inline bool
+Interpreter::printAttributeId(int id)
+{
+  return printAttributeIds.find(id) != printAttributeIds.end();
 }
 
 inline bool

@@ -1,3 +1,20 @@
+2026-02-11  Saruman the White  <eker@eker10>
+
+	* eqRewriter.hh (class EqRewriter): eqRewrite2() -> eqRewrite()
+
+2025-01-12  Saruman the White  <eker@eker10>
+
+	* eqRewriter.hh (class EqRewriter): EqRewriteFunctionPtr now takes
+	a Symbol* argument
+	(EqRewriter::doNothing): take Symbol* argument
+	(EqRewriter::eqRewrite2): take Symbol* argument
+
+2025-01-11  Saruman the White  <eker@eker10>
+
+	* core.hh: added class EqRewriter
+
+	* eqRewriter.hh (class EqRewriter): created
+
 2024-06-07  Steven M. Eker  <eker@eker10>
 
 	* preEquation.hh (enum Flags): added EXTENSION
@@ -4001,7 +4018,8 @@
 	* searchState.hh (setInitialSubstitution): move here and
 	rewritten; we now take responsibility for delete the substitution info
 
-	* searchState.cc (~SearchState): delete context, don't call context.finished()
+	* searchState.cc (~SearchState): delete context, don't call
+	context.finished()
 	(SearchState): changed handling of context
 	(findNextRewrite): changed handling of context
 	(getResult): changed handling of context
@@ -4992,7 +5010,7 @@
 
 	* sortConstraintTable.cc (orderSortConstraints): use STL sort function
 	(compareSortConstraints): becomes sortConstraintLeq()
-	
+
 ===================================Engine50==================================================
 
 1999-06-25  Steven Eker  <eker@goo.csl.sri.com>

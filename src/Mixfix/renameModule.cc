@@ -36,6 +36,11 @@ ImportModule::makeRenamedCopy(int name, Renaming* canonical, ModuleCache* module
    }
   copy->copyBoundParameters(this);
   //
+  //	If we had any conflicts between our parameters, the renamed copy will have the
+  //	same conflicts.
+  //
+  copy->addInAllConflicts(this);
+  //
   //	We only rename regular imports, not parameter theory copies.
   //
   for (ImportModule* i : importedModules)
@@ -238,6 +243,7 @@ ImportModule::donateOps2(ImportModule* copy, Renaming* renaming)
 	  int prec = DEFAULT;
 	  const Vector<int>* format;
 	  int latexMacro;
+	  int rpo;
 
 	  int index = (renaming == 0) ? NONE : renaming->renameOp(symbol);  // index of renaming that applies to symbol
 	  DebugOld("index = " << index);
@@ -251,6 +257,7 @@ ImportModule::donateOps2(ImportModule* copy, Renaming* renaming)
 		gather.clear();
 	      format = &(getFormat(symbol));
 	      latexMacro = getLatexMacro(symbol);
+	      rpo = getRpo(symbol);
 	    }
 	  else
 	    {
@@ -265,6 +272,8 @@ ImportModule::donateOps2(ImportModule* copy, Renaming* renaming)
 	      symbolType.assignFlags(SymbolType::FORMAT, !format->empty());
 	      latexMacro = renaming->getLatexMacro(index);
 	      symbolType.assignFlags(SymbolType::LATEX, latexMacro != NONE);
+	      rpo = renaming->getRpo(index);
+	      symbolType.assignFlags(SymbolType::RPO, rpo != NONE);
 	    }
 
 	  const Vector<OpDeclaration>& opDecls = symbol->getOpDeclarations();
@@ -292,6 +301,7 @@ ImportModule::donateOps2(ImportModule* copy, Renaming* renaming)
 							 gather,
 							 *format,
 							 latexMacro,
+							 rpo,
 							 getMetadata(symbol, j),
 							 originator);
 	      if (j == 0)
@@ -326,6 +336,7 @@ ImportModule::donateOps2(ImportModule* copy, Renaming* renaming)
       int prec = DEFAULT;
       const Vector<int>* format;
       int latexMacro;
+      int rpo;
 
       int index = (renaming == 0) ? NONE : renaming->renamePolymorph(name.code());
       if (index == NONE)
@@ -337,6 +348,7 @@ ImportModule::donateOps2(ImportModule* copy, Renaming* renaming)
 	    gather.clear();
 	  format = &(getPolymorphFormat(i));
 	  latexMacro = getPolymorphLatexMacro(i);
+	  rpo = getPolymorphRpo(i);
 	}
       else
 	{
@@ -349,6 +361,8 @@ ImportModule::donateOps2(ImportModule* copy, Renaming* renaming)
 	  symbolType.assignFlags(SymbolType::FORMAT, !format->empty());
 	  latexMacro = renaming->getLatexMacro(index);
 	  symbolType.assignFlags(SymbolType::LATEX, latexMacro != NONE);
+	  rpo = renaming->getRpo(index);
+	  symbolType.assignFlags(SymbolType::RPO, rpo != NONE);
 	}
 
       const Vector<Sort*>& oldDomainAndRange = getPolymorphDomainAndRange(i);
@@ -372,6 +386,7 @@ ImportModule::donateOps2(ImportModule* copy, Renaming* renaming)
 					 gather,
 					 *format,
 					 latexMacro,
+					 rpo,
 					 getPolymorphMetadata(i));
       if (moduleDonatingToTheory)
 	copy->polymorphDeclaredInModule.insert(copyIndex);
