@@ -123,6 +123,7 @@
 #include "rewriteSequenceSearch.hh"
 #include "modelCheckerSymbol.hh"
 #include "strategyModelCheckerSymbol.hh"
+#include "specialHubSymbol.hh"
 #include "satSolverSymbol.hh"
 #include "equalityConditionFragment.hh"
 #include "sortTestConditionFragment.hh"
@@ -150,6 +151,9 @@
 #include "subtermStrategy.hh"
 #include "callStrategy.hh"
 #include "oneStrategy.hh"
+#include "choiceStrategy.hh"
+#include "sampleStrategy.hh"
+#include "weightedSubtermStrategy.hh"
 
 //	metalevel class definitions
 #include "metaLevelOpSymbol.hh"
