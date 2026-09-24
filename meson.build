@@ -183,6 +183,25 @@ elif smtOption == 'cvc4'
 			required: false)
 	libraries += [cvc4, cln]
 	conf.set('USE_CVC4', 1, description: 'use CVC4 SMT solver library')
+
+elif smtOption == 'cvc5'
+  cvc5 = cxx.find_library('cvc5',
+          static: 'cvc5' in staticLibs,
+          dirs: extraSearchPaths)
+  picpoly = cxx.find_library('picpoly',
+          static: true,
+          dirs: extraSearchPaths)
+  picpolyxx = cxx.find_library('picpolyxx',
+          static: true,
+          dirs: extraSearchPaths)
+  cadical = cxx.find_library('cadical',
+          static: true,
+          dirs: extraSearchPaths)
+  mpfr = cxx.find_library('mpfr',
+          static: true,
+          dirs: extraSearchPaths)
+  libraries += [cvc5, picpoly, picpolyxx, cadical, mpfr]
+  conf.set('USE_CVC5', 1, description: 'use CVC5 SMT solver library')
 endif
 
 #
